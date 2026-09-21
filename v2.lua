@@ -261,3 +261,157 @@ ToggleButton.MouseButton1Click:Connect(function()
 end)
 
 print("[FLONSET-GUI] Код полностью адаптирован под рендеринг Arceus!")
+
+-- =======================================================
+-- СТИЛЬНЫЙ BOX ESP (ВХ КВАДРАТЫ) СКВОЗЬ СТЕНЫ ДЛЯ MM2
+-- =======================================================
+print("[FLONSET-BOX] Активация сквозного Box ВХ...")
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- Создаем скрытую папку для хранения боксов в обход античета
+local EspFolder = Instance.new("Folder")
+EspFolder.Name = "FlonsetBoxEsp"
+
+-- Хитрый трюк: пихаем контейнер в CoreGui или PlayerGui, чтобы пробить стены
+local success, _ = pcall(function() EspFolder.Parent = CoreGui end)
+if not success then EspFolder.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+getgenv().BoxEspActive = true
+local currentBoxes = {}
+
+-- Функция, которая вешает сквозной квадрат на игрока
+local function applyBoxESP(player)
+    if player == LocalPlayer then return end
+    
+    local function onCharAdded(char)
+        task.wait(0.5) -- Ждем прогрузки персонажа
+        if not getgenv().BoxEspActive then return end
+        
+        -- Если старый бокс остался, удаляем его
+        if currentBoxes[player] then
+            pcall(function() currentBoxes[player]:Destroy() end)
+        end
+        
+        -- Создаем системную обводку
+        local box = Instance.new("SelectionBox")
+        box.Name = "MobileESP"
+        box.LineThickness = 0.05
+        box.Visible = true
+        box.Adornee = char
+        box.Parent = EspFolder -- Родитель в системной папке дает видимость через стены!
+        currentBoxes[player] = box
+        
+        -- Цикл проверки роли игрока в реальном времени
+        task.spawn(function()
+            while char and char.Parent and getgenv().BoxEspActive do
+                local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+                local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+                
+                -- Красим квадрат в зависимости от роли
+                if knife then
+                    box.Color3 = Color3.fromRGB(255, 50, 50) -- Убийца (Красный)
+                elseif gun then
+                    box.Color3 = Color3.fromRGB(50, 150, 255) -- Шериф (Синий)
+                else
+                    box.Color3 = Color3.fromRGB(50, 255, 100) -- Мирный (Зеленый)
+                end
+                task.wait(1)
+            end
+            if box then box:Destroy() end
+            currentBoxes[player] = nil
+        end)
+    end
+    
+    if player.Character then task.spawn(onCharAdded, player.Character) end
+    player.CharacterAdded:Connect(onCharAdded)
+end
+
+-- Включаем ВХ для всех текущих игроков на сервере
+for _, p in ipairs(Players:GetPlayers()) do
+    applyBoxESP(p)
+end
+
+-- Включаем ВХ для всех новых заходящих игроков
+Players.PlayerAdded:Connect(applyBoxESP)
+
+-- ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ОТКЛЮЧЕНИЯ (Если захочешь выключить ВХ)
+getgenv().DisableBoxEsp = function()
+    getgenv().BoxEspActive = false
+    for _, b in pairs(currentBoxes) do
+        pcall(function() b:Destroy() end)
+    end
+    table.clear(currentBoxes)
+    pcall(function() EspFolder:Destroy() end)
+    print("[FLONSET-BOX] Box ВХ полностью отключено.")
+end
+
+print("[FLONSET-BOX] Сквозные квадраты успешно запущены!")
+-- =======================================================
+-- АВТО-ВЫСТРЕЛ В УБИЙЦУ ДЛЯ ШЕРИФА/ГЕРОЯ (SHOOT MURDERER)
+-- =======================================================
+print("[FLONSET-AIM] Скрипт мгновенного авто-выстрела запущен...")
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+getgenv().ShootMurdererActive = true
+
+-- Функция для поиска маньяка по ножу в руках или в рюкзаке
+local function findMurderer()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local knife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            
+            if knife and hum and hum.Health > 0 then
+                return player
+            end
+        end
+    end
+    return nil
+end
+
+-- Основной цикл, который караулит маньяка
+task.spawn(function()
+    while task.wait(0.1) do
+        -- Если мы принудительно отключили функцию, выходим из цикла
+        if not getgenv().ShootMurdererActive then break end
+        
+        pcall(function()
+            local char = LocalPlayer.Character
+            -- Проверяем, держим ли мы пистолет прямо сейчас
+            local gun = char and char:FindFirstChild("Gun")
+            
+            if gun and gun:FindFirstChild("Shoot") and gun.Shoot:IsA("RemoteEvent") then
+                local murderer = findMurderer()
+                
+                if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
+                    local targetHrp = murderer.Character.HumanoidRootPart
+                    local myHrp = char:FindFirstChild("HumanoidRootPart")
+                    
+                    if myHrp and targetHrp then
+                        -- Триггерим выстрел напрямую через сетевой ивент оружия (CFrame начала и CFrame цели)
+                        local startCFrame = myHrp.CFrame
+                        local aimCFrame = CFrame.new(targetHrp.Position)
+                        
+                        print("[FLONSET-AIM] Убийца обнаружен! Производим моментальный шот...")
+                        gun.Shoot:FireServer(startCFrame, aimCFrame)
+                        
+                        -- Кулдаун в 1 секунду, чтобы сервер не заподозрил спам-атаку пакетами
+                        task.wait(1)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ВЫКЛЮЧЕНИЯ (Если нужно выключить чит)
+getgenv().DisableShootMurderer = function()
+    getgenv().ShootMurdererActive = false
+    print("[FLONSET-AIM] Авто-выстрел полностью отключен.")
+end
