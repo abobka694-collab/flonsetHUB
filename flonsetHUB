@@ -1,93 +1,78 @@
 -- =======================================================
--- ТВОЙ СОБСТВЕННЫЙ ПРОСТОЙ ХАБ ДЛЯ MM2 (С ЧИСТОГО ЛИСТА)
+-- ORION HUB ДЛЯ MM2 (СПЕЦИАЛЬНО ПОД ARCEUS X NEO)
 -- =======================================================
-print("[FLONSET-SIMPLE] Запуск скрипта...")
+print("[ARCEUS-X] Инициализация безопасного меню...")
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
+-- Загружаем чистую и стабильную Orion Library
+local OrionLib = loadstring(game:HttpGet(('https://githubusercontent.com')))()
 
--- 1. СОЗДАЕМ ПРОСТОЕ ГРАФИЧЕСКОЕ МЕНЮ (GUI)
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlonsetSimpleGui"
-pcall(function() ScreenGui.Parent = CoreGui end) -- Прячем от античета в CoreGui
+-- Создаем окно хаба (Тема адаптирована под телефон)
+local Window = OrionLib:MakeWindow({Name = "FLONSET HUB (MM2)", HidePremium = true, SaveConfig = false, ConfigFolder = "OrionTest"})
 
--- Главная панель меню (темно-серый квадрат)
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 180)
-Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.BorderSizePixel = 2
-Frame.Active = true
-Frame.Draggable = true -- Меню можно перетаскивать мышкой по экрану
-Frame.Parent = ScreenGui
-
--- Заголовок меню
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "FLONSET SIMPLE MM2"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-Title.Parent = Frame
-
--- 2. ФУНКЦИЯ 1: КНОПКА СКОРОСТИ (WalkSpeed)
-local SpeedButton = Instance.new("TextButton")
-SpeedButton.Size = UDim2.new(0.9, 0, 0, 35)
-SpeedButton.Position = UDim2.new(0.05, 0, 0, 45)
-SpeedButton.Text = "Toggle Speed (32)"
-SpeedButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedButton.Parent = Frame
-
+-- Переменные для функций
 local speedEnabled = false
-SpeedButton.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    if speedEnabled then
-        SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0) -- Зеленый (Включено)
-    else
-        SpeedButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Серый (Выключено)
-    end
-end)
+local speedValue = 32
+local espEnabled = false
+local espBoxes = {}
 
--- Фоновый цикл для удержания безопасной скорости
+-- =======================================================
+-- ВКЛАДКА 1: PLAYER (Скорость бега)
+-- =======================================================
+local Tab1 = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+Tab1:AddSlider({
+	Name = "Speed Power",
+	Min = 16,
+	Max = 100,
+	Default = 32,
+	Color = Color3.fromRGB(255,255,255),
+	Increment = 1,
+	ValueName = "studs",
+	Callback = function(Value)
+		speedValue = value
+	end    
+})
+
+Tab1:AddToggle({
+	Name = "Enable Speed",
+	Default = false,
+	Callback = function(Value)
+		speedEnabled = Value
+	end
+})
+
+-- Безопасный фоновый цикл скорости
 task.spawn(function()
     while task.wait(0.5) do
         pcall(function()
-            local char = LocalPlayer.Character
+            local char = game.Players.LocalPlayer.Character
             local hum = char and char:FindFirstChildOfClass("Humanoid")
             if hum then
-                hum.WalkSpeed = speedEnabled and 32 or 16
+                hum.WalkSpeed = speedEnabled and speedValue or 16
             end
         end)
     end
 end)
 
--- 3. ФУНКЦИЯ 2: КНОПКА ПОДСВЕТКИ (ESP на роли)
-local EspButton = Instance.new("TextButton")
-EspButton.Size = UDim2.new(0.9, 0, 0, 35)
-EspButton.Position = UDim2.new(0.05, 0, 0, 95)
-EspButton.Text = "Toggle ESP (Roles)"
-EspButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-EspButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-EspButton.Parent = Frame
+-- =======================================================
+-- ВКЛАДКА 2: VISUALS (Безопасный Box ESP для мобилок)
+-- =======================================================
+local Tab2 = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
-local espEnabled = false
-local currentHighlights = {}
-
-local function applyESP(player)
-    if player == LocalPlayer then return end
+local function applyMobileESP(player)
+    if player == game.Players.LocalPlayer then return end
+    
     local function onChar(char)
         task.wait(0.5)
         if not espEnabled then return end
         
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "SimpleESP"
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.Adornee = char
-        highlight.Parent = CoreGui
-        currentHighlights[player] = highlight
+        -- Используем не лагающий на телефонах Box (SelectionBox вместо Highlight)
+        local box = Instance.new("SelectionBox")
+        box.Name = "ArceusESP"
+        box.LineThickness = 0.05
+        box.Adornee = char
+        box.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+        espBoxes[player] = box
         
         task.spawn(function()
             while char and char.Parent and espEnabled do
@@ -95,52 +80,39 @@ local function applyESP(player)
                 local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
                 
                 if knife then
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Красный (Убийца)
+                    box.Color3 = Color3.fromRGB(255, 0, 0) -- Красный Убийца
                 elseif gun then
-                    highlight.FillColor = Color3.fromRGB(0, 150, 255) -- Синий (Шериф)
+                    box.Color3 = Color3.fromRGB(0, 150, 255) -- Синий Шериф
                 else
-                    highlight.FillColor = Color3.fromRGB(0, 255, 100) -- Зеленый (Innocent)
+                    box.Color3 = Color3.fromRGB(0, 255, 100) -- Невинный
                 end
                 task.wait(1)
             end
-            if highlight then highlight:Destroy() end
+            if box then box:Destroy() end
         end)
     end
+    
     if player.Character then task.spawn(onChar, player.Character) end
     player.CharacterAdded:Connect(onChar)
 end
 
-EspButton.MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    if espEnabled then
-        EspButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        for _, p in ipairs(Players:GetPlayers()) do applyESP(p) end
-    else
-        EspButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        for _, hl in pairs(currentHighlights) do pcall(function() hl:Destroy() end) end
-        table.clear(currentHighlights)
-    end
+Tab2:AddToggle({
+	Name = "Player Box ESP",
+	Default = false,
+	Callback = function(Value)
+		espEnabled = Value
+        if Value then
+            for _, p in ipairs(game.Players:GetPlayers()) do applyMobileESP(p) end
+        else
+            for _, b in pairs(espBoxes) do pcall(function() b:Destroy() end) end
+            table.clear(espBoxes)
+        end
+	end
+})
+
+game.Players.PlayerAdded:Connect(function(p)
+    if espEnabled then applyMobileESP(p) end
 end)
 
-Players.PlayerAdded:Connect(function(p)
-    if espEnabled then applyESP(p) end
-end)
-
--- Кнопка закрытия меню (кнопка Свернуть/Развернуть)
-local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Size = UDim2.new(0.9, 0, 0, 25)
-MinimizeButton.Position = UDim2.new(0.05, 0, 0, 145)
-MinimizeButton.Text = "Close / Unload"
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeButton.Parent = Frame
-
-MinimizeButton.MouseButton1Click:Connect(function()
-    speedEnabled = false
-    espEnabled = false
-    for _, hl in pairs(currentHighlights) do pcall(function() hl:Destroy() end) end
-    ScreenGui:Destroy()
-    print("[FLONSET-SIMPLE] Скрипт полностью выгружен.")
-end)
-
-print("[FLONSET-SIMPLE] Успешный запуск!")
+-- Финальный аккорд инициализации библиотеки Orion
+OrionLib:Init()
