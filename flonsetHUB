@@ -1,186 +1,273 @@
 -- =======================================================
--- НЕУЯЗВИМЫЙ МОБИЛЬНЫЙ ХАБ С КРУГЛЫМИ КНОПКАМИ (ДЛЯ ARCEUS X)
+-- FLONSET PREMIUM MM2 — SHITARO STYLE GUI (CLEAN TEMPLATE)
 -- =======================================================
-print("[FLONSET-FLOATING] Запуск кнопочного интерфейса...")
+print("[FLONSET-GUI] Отрисовка кастомного премиум-интерфейса...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
--- Безопасный подбор папки для кнопок
+-- 1. КОНТЕЙНЕР ИНТЕРФЕЙСА
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlonsetFloatingGui"
+ScreenGui.Name = "FlonsetShitaroGui"
 ScreenGui.ResetOnSpawn = false
 
-local success, err = pcall(function()
-    ScreenGui.Parent = CoreGui
-end)
-if not success then
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+local success, _ = pcall(function() ScreenGui.Parent = CoreGui end)
+if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- 2. ГЛАВНОЕ ОКНО ЧИТА (Дизайн со скриншота)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 480, 0, 320)
+MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Перетаскивание пальцем по экрану телефона
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+-- 3. БОКОВАЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar)
+local SideBar = Instance.new("Frame")
+SideBar.Size = UDim2.new(0, 110, 1, 0)
+SideBar.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideBar.BorderSizePixel = 0
+SideBar.Parent = MainFrame
+
+local SideCorner = Instance.new("UICorner")
+SideCorner.CornerRadius = UDim.new(0, 12)
+SideCorner.Parent = SideBar
+
+local SideHide = Instance.new("Frame")
+SideHide.Size = UDim2.new(0, 20, 1, 0)
+SideHide.Position = UDim2.new(1, -20, 0, 0)
+SideHide.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideHide.BorderSizePixel = 0
+SideHide.Parent = SideBar
+
+-- ЛОГОТИП: Буква "F" вверху панели
+local Logo = Instance.new("TextLabel")
+Logo.Size = UDim2.new(1, 0, 0, 60)
+Logo.Text = "F"
+Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
+Logo.Font = Enum.Font.Accent
+Logo.TextSize = 36
+Logo.BackgroundTransparency = 1
+Logo.Parent = SideBar
+
+-- Контейнер для списка вкладок
+local ButtonScroll = Instance.new("ScrollingFrame")
+ButtonScroll.Size = UDim2.new(1, 0, 1, -70)
+ButtonScroll.Position = UDim2.new(0, 0, 0, 65)
+ButtonScroll.BackgroundTransparency = 1
+ButtonScroll.BorderSizePixel = 0
+ButtonScroll.ScrollBarThickness = 0
+ButtonScroll.CanvasSize = UDim2.new(0, 0, 0, 250)
+ButtonScroll.Parent = SideBar
+
+local ScrollLayout = Instance.new("UIListLayout")
+ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ScrollLayout.Padding = UDim.new(0, 4)
+ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ScrollLayout.Parent = ButtonScroll
+
+-- 4. ПАНЕЛЬ ДЛЯ КАРТОЧЕК (Контент вкладок)
+local ContentPanel = Instance.new("Frame")
+ContentPanel.Size = UDim2.new(1, -125, 1, -20)
+ContentPanel.Position = UDim2.new(0, 117, 0, 10)
+ContentPanel.BackgroundTransparency = 1
+ContentPanel.Parent = MainFrame
+
+local tabs = {}
+local tabButtons = {}
+
+-- ФУНКЦИЯ СОЗДАНИЯ ВКЛАДОК
+local function CreateTab(tabName, iconText)
+    local TabContainer = Instance.new("ScrollingFrame")
+    TabContainer.Size = UDim2.new(1, 0, 1, 0)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.BorderSizePixel = 0
+    TabContainer.ScrollBarThickness = 2
+    TabContainer.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 60)
+    TabContainer.Visible = false
+    TabContainer.Parent = ContentPanel
+    
+    -- Сетка UIGridLayout для создания квадратных плиток из скриншота
+    local Grid = Instance.new("UIGridLayout")
+    Grid.CellSize = UDim2.new(0, 105, 0, 95)
+    Grid.CellPadding = UDim2.new(0, 10, 0, 10)
+    Grid.SortOrder = Enum.SortOrder.LayoutOrder
+    Grid.Parent = TabContainer
+    
+    tabs[tabName] = TabContainer
+    
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(0.9, 0, 0, 28)
+    TabBtn.Text = "  " .. iconText .. "  " .. tabName
+    TabBtn.Font = Enum.Font.Gotham
+    TabBtn.TextSize = 10
+    TabBtn.TextColor3 = Color3.fromRGB(130, 130, 145)
+    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
+    TabBtn.BackgroundTransparency = 1
+    TabBtn.Parent = ButtonScroll
+    
+    table.insert(tabButtons, TabBtn)
+    
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, container in pairs(tabs) do container.Visible = false end
+        for _, btn in ipairs(tabButtons) do btn.TextColor3 = Color3.fromRGB(130, 130, 145) end
+        TabContainer.Visible = true
+        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
 end
 
--- Переменные функций
-local speedEnabled = false
-local espEnabled = false
-local grabEnabled = false
-
-local originalMaterials = {}
-local originalColors = {}
-local activeChams = {}
-
--- Функция для быстрого создания круглых кнопок
-local function CreateButton(text, pos, activeColor, callback)
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0, 50, 0, 50)
-    Btn.Position = pos
-    Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.Text = text
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 10
-    Btn.Active = true
-    Btn.Draggable = true -- Любую кнопку можно перетащить пальцем куда угодно!
-    Btn.Parent = ScreenGui
+-- ФУНКЦИЯ ДОБАВЛЕНИЯ ПЛИТОК В СЕТКУ
+local function AddCard(tabName, titleText, descText)
+    local container = tabs[tabName]
+    if not container then return end
     
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(1, 0) -- Делает кнопку идеально круглой
-    Corner.Parent = Btn
+    local Card = Instance.new("TextButton")
+    Card.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
+    Card.BorderSizePixel = 0
+    Card.Text = ""
+    Card.Parent = container
+    
+    local CardCorner = Instance.new("UICorner")
+    CardCorner.CornerRadius = UDim.new(0, 8)
+    CardCorner.Parent = Card
+    
+    local ImgBox = Instance.new("Frame")
+    ImgBox.Size = UDim2.new(1, -12, 0, 50)
+    ImgBox.Position = UDim2.new(0, 6, 0, 6)
+    ImgBox.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    ImgBox.BorderSizePixel = 0
+    ImgBox.Parent = Card
+    
+    local ImgCorner = Instance.new("UICorner")
+    ImgCorner.CornerRadius = UDim.new(0, 6)
+    ImgCorner.Parent = ImgBox
+    
+    local InnerText = Instance.new("TextLabel")
+    InnerText.Size = UDim2.new(1, 0, 1, 0)
+    InnerText.Text = "FLON"
+    InnerText.Font = Enum.Font.GothamBold
+    InnerText.TextSize = 14
+    InnerText.TextColor3 = Color3.fromRGB(60, 60, 80)
+    InnerText.BackgroundTransparency = 1
+    InnerText.Parent = ImgBox
+    
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -12, 0, 18)
+    Title.Position = UDim2.new(0, 6, 0, 60)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 10
+    Title.TextColor3 = Color3.fromRGB(220, 220, 230)
+    Title.TextXAlignment = Enum.TextXAlignment.Center
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+    
+    local Status = Instance.new("TextLabel")
+    Status.Size = UDim2.new(1, -12, 0, 12)
+    Status.Position = UDim2.new(0, 6, 0, 76)
+    Status.Text = descText .. ": OFF"
+    Status.Font = Enum.Font.Gotham
+    Status.TextSize = 8
+    Status.TextColor3 = Color3.fromRGB(120, 120, 140)
+    Status.TextXAlignment = Enum.TextXAlignment.Center
+    Status.BackgroundTransparency = 1
+    Status.Parent = Card
     
     local enabled = false
-    Btn.MouseButton1Click:Connect(function()
+    Card.MouseButton1Click:Connect(function()
         enabled = not enabled
         if enabled then
-            Btn.BackgroundColor3 = activeColor
+            Status.Text = descText .. ": ON"
+            Status.TextColor3 = Color3.fromRGB(0, 200, 120)
+            Card.BackgroundColor3 = Color3.fromRGB(32, 42, 42)
         else
-            Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+            Status.Text = descText .. ": OFF"
+            Status.TextColor3 = Color3.fromRGB(120, 120, 140)
+            Card.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
         end
-        callback(enabled)
     end)
-    return Btn
 end
 
 -- =======================================================
--- СОЗДАЕМ КНОПКИ НА ЭКРАНЕ (Разнесены в левую часть экрана)
+-- СОЗДАНИЕ ВЕТОК ВКЛАДОК (Раздел maps удален)
 -- =======================================================
+CreateTab("Visuals", "👁")
+CreateTab("Movement", "⚡")
+CreateTab("Target", "🎯")
+CreateTab("Skins", "🎨")
+CreateTab("Config", "⚙")
 
--- 1. Кнопка СКОРОСТИ (WalkSpeed)
-CreateButton("SPEED", UDim2.new(0.02, 0, 0.2, 0), Color3.fromRGB(0, 160, 100), function(state)
-    speedEnabled = state
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.WalkSpeed = speedEnabled and 32 or 16
-            end
-        end)
-    end
-end)
-
--- 2. Кнопка ВХ (Неоновые Чамсы сквозь стены)
-local function applyMobileESP(player)
-    if player == LocalPlayer then return end
-    local function onCharAdded(char)
-        task.wait(0.5)
-        if not espEnabled then return end
-        
-        activeChams[player] = task.spawn(function()
-            while char and char.Parent and espEnabled do
-                local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
-                local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
-                
-                local targetColor = Color3.fromRGB(0, 255, 100) -- Зеленый (Мирный)
-                if knife then
-                    targetColor = Color3.fromRGB(255, 0, 0) -- Красный (Маньяк)
-                elseif gun then
-                    targetColor = Color3.fromRGB(0, 150, 255) -- Синий (Шериф)
-                end
-                
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                        if not originalMaterials[part] then
-                            originalMaterials[part] = part.Material
-                            originalColors[part] = part.Color
-                        end
-                        if part.Material ~= Enum.Material.ForceField then
-                            part.Material = Enum.Material.ForceField
-                        end
-                        if part.Color ~= targetColor then
-                            part.Color = targetColor
-                        end
-                    end
-                end
-                task.wait(1)
-            end
-        end)
-    end
-    if player.Character then task.spawn(onCharAdded, player.Character) end
-    player.CharacterAdded:Connect(onCharAdded)
+-- Авто-открытие первой вкладки при старте
+if tabs["Visuals"] and tabButtons then
+    tabs["Visuals"].Visible = true
+    tabButtons.TextColor3 = Color3.fromRGB(255, 255, 255)
 end
 
-CreateButton("CHAMS", UDim2.new(0.02, 0, 0.3, 0), Color3.fromRGB(0, 120, 255), function(state)
-    espEnabled = state
-    if state then
-        for _, p in ipairs(Players:GetPlayers()) do applyMobileESP(p) end
-    else
-        for _, thread in pairs(activeChams) do pcall(function() task.cancel(thread) end) end
-        table.clear(activeChams)
-        for part, mat in pairs(originalMaterials) do
-            if part and part.Parent then
-                part.Material = mat
-                part.Color = originalColors[part] or part.Color
-            end
-        end
-        table.clear(originalMaterials)
-        table.clear(originalColors)
-    end
-end)
+-- Добавление пустых интерактивных плиток в разделы
+AddCard("Visuals", "Neon Chams", "ESP")
+AddCard("Visuals", "Player Box", "ESP")
 
-Players.PlayerAdded:Connect(function(p)
-    if espEnabled then applyMobileESP(p) end
-end)
+AddCard("Movement", "Speed Hack", "WalkSpeed")
+AddCard("Movement", "Auto-Grab", "Gun Pick")
 
--- 3. Кнопка АВТОПОДБОРА ПИСТОЛЕТА (Auto-Grab)
-CreateButton("GRAB", UDim2.new(0.02, 0, 0.4, 0), Color3.fromRGB(255, 160, 0), function(state)
-    grabEnabled = state
-end)
+AddCard("Target", "Kill Targets", "Aura")
+AddCard("Target", "Fling Targets", "Fling")
 
-task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            if grabEnabled then
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local gunDrop = workspace:FindFirstChild("GunDrop")
-                
-                if gunDrop and hrp then
-                    local distance = (hrp.Position - gunDrop.Position).Magnitude
-                    local duration = distance / 45
-                    
-                    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-                    local tween = TweenService:Create(gunDrop, tweenInfo, {CFrame = hrp.CFrame})
-                    tween:Play()
-                end
-            end
-        end)
-    end
-end)
+AddCard("Skins", "Knife Skin", "Weapon")
+AddCard("Skins", "Gun Skin", "Weapon")
 
--- 4. Кнопка закрытия скрипта (Удаляет кнопки и сбрасывает эффекты)
-local CloseBtn = CreateButton("EXIT", UDim2.new(0.02, 0, 0.5, 0), Color3.fromRGB(150, 0, 0), function(state)
-    speedEnabled = false
-    espEnabled = false
-    grabEnabled = false
-    for _, thread in pairs(activeChams) do pcall(function() task.cancel(thread) end) end
-    for part, mat in pairs(originalMaterials) do
-        if part and part.Parent then
-            part.Material = mat
-            part.Color = originalColors[part] or part.Color
-        end
-    end
+-- Кнопка закрытия хаба в разделе Config
+local UnloadBtn = Instance.new("TextButton")
+UnloadBtn.Size = UDim2.new(0.9, 0, 0, 35)
+UnloadBtn.Position = UDim2.new(0.05, 0, 0, 35)
+UnloadBtn.Text = "Unload / Close Hack"
+UnloadBtn.Font = Enum.Font.GothamBold
+UnloadBtn.TextSize = 11
+UnloadBtn.BackgroundColor3 = Color3.fromRGB(120, 35, 35)
+UnloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnloadBtn.Parent = tabs["Config"]
+
+local UnloadCorner = Instance.new("UICorner")
+UnloadCorner.CornerRadius = UDim.new(0, 6)
+UnloadCorner.Parent = UnloadBtn
+
+UnloadBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
+
+-- =======================================================
+-- ПЛАВАЮЩАЯ КНОПКА "F" ДЛЯ СКРЫТИЯ/ОТКРЫТИЯ МЕНЮ
+-- =======================================================
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 42, 0, 42)
+ToggleButton.Position = UDim2.new(0.02, 0, 0.15, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Text = "F"
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 18
+ToggleButton.Active = true
+ToggleButton.Draggable = true -- Можно таскать по всему экрану смартфона
+ToggleButton.Parent = ScreenGui
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(1, 0)
+ButtonCorner.Parent = ToggleButton
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    else
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 160, 100)
+    end
+end)
+
+print("[FLONSET-GUI] Оптимизированный шаблон успешно запущен!")
