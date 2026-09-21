@@ -116,20 +116,62 @@ local function applyMobileESP(player)
         if not espEnabled then return end
         
         -- Используем легкие SelectionBox, которые Arceus X гарантированно рендерит
-                                local box = Instance.new("SelectionBox")
-        box.Name = "MobileESPBox"
-        box.LineThickness = 0.04
-        box.Adornee = char
+                                local function applyMobileESP(player)
+    if player == LocalPlayer then return end
+    
+    local function onCharAdded(char)
+        task.wait(0.5)
+        if not espEnabled then return end
         
-        -- ЭТИ СТРОЧКИ СДЕЛАЮТ ВХ СКВОЗЬ СТЕНЫ ДЛЯ ARCEUS X:
-        box.Visible = true
-        pcall(function()
-            -- Принудительно заставляем коробку рендериться поверх текстур карты
-            box.ZIndex = 10
+        local head = char:WaitForChild("Head", 5)
+        if not head then return end
+        
+        -- Создаем GUI, который будет виден СКВОЗЬ ЛЮБЫЕ СТЕНЫ
+        local bGui = Instance.new("BillboardGui")
+        bGui.Name = "ArceusWallHack"
+        bGui.Size = UDim2.new(0, 100, 0, 30)
+        bGui.AlwaysOnTop = true -- САМАЯ ВАЖНАЯ СТРОЧКА ДЛЯ ВХ! Пробивает стены на мобилках
+        bGui.ExtentsOffset = Vector3.new(0, 3, 0) -- Поднимаем текст повыше над головой
+        bGui.Adornee = head
+        bGui.Parent = ScreenGui
+        currentBoxes[player] = bGui
+        
+        -- Создаем красивый жирный текст
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.TextSize = 11
+        textLabel.TextStrokeTransparency = 0.2 -- Черная обводка, чтобы текст было видно везде
+        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        textLabel.Parent = bGui
+        
+        task.spawn(function()
+            while char and char.Parent and espEnabled and head.Parent do
+                local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+                local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+                
+                -- Динамически меняем текст и цвет роли в реальном времени сквозь стены
+                if knife then
+                    textLabel.Text = "[MURDERER] " .. player.DisplayName
+                    textLabel.TextColor3 = Color3.fromRGB(255, 50, 50) -- Ярко-красный
+                elseif gun then
+                    textLabel.Text = "[SHERIFF] " .. player.DisplayName
+                    textLabel.TextColor3 = Color3.fromRGB(50, 150, 255) -- Синий
+                else
+                    textLabel.Text = "[INNOCENT] " .. player.DisplayName
+                    textLabel.TextColor3 = Color3.fromRGB(50, 255, 100) -- Зеленый
+                end
+                task.wait(1)
+            end
+            if bGui then bGui:Destroy() end
         end)
-        
-        box.Parent = ScreenGui 
-        currentBoxes[player] = box
+    end
+    
+    if player.Character then task.spawn(onCharAdded, player.Character) end
+    player.CharacterAdded:Connect(onCharAdded)
+end
+
 
 
         
