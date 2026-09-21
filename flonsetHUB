@@ -7,30 +7,29 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 -- 1. НАХОДИМ ПРАВИЛЬНУЮ ПАПКУ ДЛЯ СМАРТФОНОВ
--- Arceus часто блокирует CoreGui, поэтому принудительно пихаем меню в PlayerGui игрока
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Если старое меню уже было на экране, удаляем его, чтобы не было дубликатов
+-- Если старое меню уже было на экране, удаляем его
 if PlayerGui:FindFirstChild("FlonsetMobileGui") then
     PlayerGui.FlonsetMobileGui:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FlonsetMobileGui"
-ScreenGui.ResetOnSpawn = false -- Меню не пропадет, когда тебя убьют
+ScreenGui.ResetOnSpawn = false -- Меню не пропадет при смерти
 ScreenGui.Parent = PlayerGui
 
 -- Главное окошко чита (компактное, под экран телефона)
 local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0, 180, 0, 150)
-Frame.Position = UDim2.new(0.1, 0, 0.25, 0) -- Появится чуть левее центра экрана
+Frame.Position = UDim2.new(0.1, 0, 0.25, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 Frame.BorderSizePixel = 0
 Frame.Active = true
-Frame.Draggable = true -- Можно перетаскивать пальцем по экрану!
+Frame.Draggable = true -- Можно перетаскивать пальцем
 Frame.Parent = ScreenGui
 
--- Скругление углов (чтобы меню было красивым)
+-- Скругление углов главного меню
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 8)
 Corner.Parent = Frame
@@ -50,7 +49,39 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 8)
 TitleCorner.Parent = Title
 
+-- =======================================================
+-- КНОПКА СКРЫТИЯ / ОТКРЫТИЯ МЕНЮ (ПЛАВАЮЩАЯ КНОПКА "F")
+-- =======================================================
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 45, 0, 45)
+ToggleButton.Position = UDim2.new(0.02, 0, 0.15, 0) -- Висит слева вверху экрана
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Text = "F"
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 18
+ToggleButton.Active = true
+ToggleButton.Draggable = true -- Кнопку "F" тоже можно перетащить в любой угол!
+ToggleButton.Parent = ScreenGui
+
+-- Делаем кнопку идеально круглой
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(1, 0)
+ButtonCorner.Parent = ToggleButton
+
+-- Логика скрытия/открытия по нажатию
+ToggleButton.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+    if Frame.Visible then
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 55) -- Синеватая, когда меню открыто
+    else
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 160, 100) -- Зеленая, когда меню спрятано
+    end
+end)
+
+-- =======================================================
 -- 2. ФУНКЦИЯ 1: КНОПКА СКОРОСТИ БЕГА (WalkSpeed)
+-- =======================================================
 local SpeedButton = Instance.new("TextButton")
 SpeedButton.Size = UDim2.new(0.9, 0, 0, 32)
 SpeedButton.Position = UDim2.new(0.05, 0, 0, 42)
@@ -70,10 +101,10 @@ SpeedButton.MouseButton1Click:Connect(function()
     speedEnabled = not speedEnabled
     if speedEnabled then
         SpeedButton.Text = "WalkSpeed: ON (32)"
-        SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 160, 100) -- Зеленый
+        SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 160, 100)
     else
         SpeedButton.Text = "WalkSpeed: OFF"
-        SpeedButton.BackgroundColor3 = Color3.fromRGB(50, 50, 65) -- Обычный
+        SpeedButton.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
     end
 end)
 
@@ -90,7 +121,9 @@ task.spawn(function()
     end
 end)
 
--- 3. ФУНКЦИЯ 2: КНОПКА БЕЗОПАСНОЙ ПОДСВЕТКИ (Box ESP)
+-- =======================================================
+-- 3. ФУНКЦИЯ 2: КНОПКА НАСТОЯЩЕГО ВХ НА РОЛИ (СКВОЗЬ СТЕНЫ)
+-- =======================================================
 local EspButton = Instance.new("TextButton")
 EspButton.Size = UDim2.new(0.9, 0, 0, 32)
 EspButton.Position = UDim2.new(0.05, 0, 0, 82)
@@ -106,7 +139,7 @@ EspCorner.CornerRadius = UDim.new(0, 6)
 EspCorner.Parent = EspButton
 
 local espEnabled = false
-local currentBoxes = {}
+local originalNames = {}
 
 local function applyMobileESP(player)
     if player == LocalPlayer then return end
@@ -115,81 +148,39 @@ local function applyMobileESP(player)
         task.wait(0.5)
         if not espEnabled then return end
         
-        -- Используем легкие SelectionBox, которые Arceus X гарантированно рендерит
-                                local function applyMobileESP(player)
-    if player == LocalPlayer then return end
-    
-    local function onCharAdded(char)
-        task.wait(0.5)
-        if not espEnabled then return end
+        local hum = char:WaitForChild("Humanoid", 5)
+        if not hum then return end
         
-        local head = char:WaitForChild("Head", 5)
-        if not head then return end
-        
-        -- Создаем GUI, который будет виден СКВОЗЬ ЛЮБЫЕ СТЕНЫ
-        local bGui = Instance.new("BillboardGui")
-        bGui.Name = "ArceusWallHack"
-        bGui.Size = UDim2.new(0, 100, 0, 30)
-        bGui.AlwaysOnTop = true -- САМАЯ ВАЖНАЯ СТРОЧКА ДЛЯ ВХ! Пробивает стены на мобилках
-        bGui.ExtentsOffset = Vector3.new(0, 3, 0) -- Поднимаем текст повыше над головой
-        bGui.Adornee = head
-        bGui.Parent = ScreenGui
-        currentBoxes[player] = bGui
-        
-        -- Создаем красивый жирный текст
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 11
-        textLabel.TextStrokeTransparency = 0.2 -- Черная обводка, чтобы текст было видно везде
-        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        textLabel.Parent = bGui
+        -- Запоминаем родное имя игрока, если еще не сохранили
+        if not originalNames[player] then
+            originalNames[player] = player.DisplayName
+        end
+        local origName = originalNames[player]
         
         task.spawn(function()
-            while char and char.Parent and espEnabled and head.Parent do
-                local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
-                local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+            while char and char.Parent and espEnabled and hum.Parent do
+                -- Принуждаем движок Роблокса показывать ник СКВОЗЬ ТЕКСТУРЫ КАРТЫ
+                hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Always
                 
-                -- Динамически меняем текст и цвет роли в реальном времени сквозь стены
-                if knife then
-                    textLabel.Text = "[MURDERER] " .. player.DisplayName
-                    textLabel.TextColor3 = Color3.fromRGB(255, 50, 50) -- Ярко-красный
-                elseif gun then
-                    textLabel.Text = "[SHERIFF] " .. player.DisplayName
-                    textLabel.TextColor3 = Color3.fromRGB(50, 150, 255) -- Синий
-                else
-                    textLabel.Text = "[INNOCENT] " .. player.DisplayName
-                    textLabel.TextColor3 = Color3.fromRGB(50, 255, 100) -- Зеленый
-                end
-                task.wait(1)
-            end
-            if bGui then bGui:Destroy() end
-        end)
-    end
-    
-    if player.Character then task.spawn(onCharAdded, player.Character) end
-    player.CharacterAdded:Connect(onCharAdded)
-end
-
-
-
-        
-        task.spawn(function()
-            while char and char.Parent and espEnabled do
+                -- Логика проверки оружия в рюкзаке или руках
                 local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
                 local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
                 
                 if knife then
-                    box.Color3 = Color3.fromRGB(255, 50, 50) -- Убийца (Красный)
+                    hum.DisplayName = "== [MURDERER] == " .. origName
                 elseif gun then
-                    box.Color3 = Color3.fromRGB(50, 150, 255) -- Шериф (Синий)
+                    hum.DisplayName = "== [SHERIFF] == " .. origName
                 else
-                    box.Color3 = Color3.fromRGB(50, 255, 100) -- Невинный (Зеленый)
+                    hum.DisplayName = "[INNOCENT] " .. origName
                 end
                 task.wait(1)
             end
-            if box then box:Destroy() end
+            
+            -- Возвращаем стандартные настройки отображения ников при выключении
+            if hum and hum.Parent then
+                hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+                hum.DisplayName = origName
+            end
         end)
     end
     
@@ -206,8 +197,15 @@ EspButton.MouseButton1Click:Connect(function()
     else
         EspButton.Text = "Role ESP: OFF"
         EspButton.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-        for _, b in pairs(currentBoxes) do pcall(function() b:Destroy() end) end
-        table.clear(currentBoxes)
+        -- Сбрасываем никнеймы всех игроков к исходным
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                local origName = originalNames[p] or p.DisplayName
+                hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+                hum.DisplayName = origName
+            end
+        end
     end
 end)
 
@@ -215,7 +213,9 @@ Players.PlayerAdded:Connect(function(p)
     if espEnabled then applyMobileESP(p) end
 end)
 
--- Кнопка полного закрытия / выгрузки чита
+-- =======================================================
+-- 4. КНОПКА ПОЛНОГО ЗАКРЫТИЯ / ВЫГРУЗКИ ЧИТА
+-- =======================================================
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0.9, 0, 0, 22)
 CloseButton.Position = UDim2.new(0.05, 0, 0, 120)
@@ -233,9 +233,16 @@ CloseCorner.Parent = CloseButton
 CloseButton.MouseButton1Click:Connect(function()
     speedEnabled = false
     espEnabled = false
-    for _, b in pairs(currentBoxes) do pcall(function() b:Destroy() end) end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
+            local hum = p.Character:FindFirstChildOfClass("Humanoid")
+            local origName = originalNames[p] or p.DisplayName
+            hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+            hum.DisplayName = origName
+        end
+    end
     ScreenGui:Destroy()
-    print("[FLONSET-HUB] Чит полностью закрыт.")
+    print("[FLONSET-HUB] Скрипт полностью выгружен.")
 end)
 
-print("[ARCEUS-FIX] Интерфейс успешно развернут через PlayerGui!")
+print("[ARCEUS-FIX] Мобильный GUI успешно инициализирован!")
