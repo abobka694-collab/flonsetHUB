@@ -116,12 +116,22 @@ local function applyMobileESP(player)
         if not espEnabled then return end
         
         -- Используем легкие SelectionBox, которые Arceus X гарантированно рендерит
-        local box = Instance.new("SelectionBox")
+                                local box = Instance.new("SelectionBox")
         box.Name = "MobileESPBox"
         box.LineThickness = 0.04
         box.Adornee = char
-        box.Parent = ScreenGui -- Привязываем к нашему GUI
+        
+        -- ЭТИ СТРОЧКИ СДЕЛАЮТ ВХ СКВОЗЬ СТЕНЫ ДЛЯ ARCEUS X:
+        box.Visible = true
+        pcall(function()
+            -- Принудительно заставляем коробку рендериться поверх текстур карты
+            box.ZIndex = 10
+        end)
+        
+        box.Parent = ScreenGui 
         currentBoxes[player] = box
+
+
         
         task.spawn(function()
             while char and char.Parent and espEnabled do
