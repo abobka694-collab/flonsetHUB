@@ -262,66 +262,98 @@ end)
 
 print("[FLONSET-GUI] Код полностью адаптирован под рендеринг Arceus!")
 
+ = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+ -- =======================================================
+-- ПРОФЕССИОНАЛЬНОЕ 2D-BOX ESP (ВХ КВАДРАТЫ С ФИКСОМ ВЫКЛЮЧЕНИЯ)
 -- =======================================================
--- СТИЛЬНЫЙ BOX ESP (ВХ КВАДРАТЫ) СКВОЗЬ СТЕНЫ ДЛЯ MM2
--- =======================================================
-print("[FLONSET-BOX] Активация сквозного Box ВХ...")
+print("[FLONSET-BOX] Активация сквозных 2D-боксов...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 
--- Создаем скрытую папку для хранения боксов в обход античета
-local EspFolder = Instance.new("Folder")
-EspFolder.Name = "FlonsetBoxEsp"
+getgenv().ProBoxEspActive = true
+local activeBoxes = {}
 
--- Хитрый трюк: пихаем контейнер в CoreGui или PlayerGui, чтобы пробить стены
-local success, _ = pcall(function() EspFolder.Parent = CoreGui end)
-if not success then EspFolder.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+-- Создаем скрытый системный контейнер для рамок в CoreGui
+local EspUi = Instance.new("ScreenGui")
+EspUi.Name = "FlonsetProBoxEsp"
+EspUi.ResetOnSpawn = false
+local success, _ = pcall(function() EspUi.Parent = CoreGui end)
+if not success then EspUi.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-getgenv().BoxEspActive = true
-local currentBoxes = {}
-
--- Функция, которая вешает сквозной квадрат на игрока
-local function applyBoxESP(player)
+-- Функция создания профессионального бокса
+local function applyProBox(player)
     if player == LocalPlayer then return end
     
     local function onCharAdded(char)
-        task.wait(0.5) -- Ждем прогрузки персонажа
-        if not getgenv().BoxEspActive then return end
+        task.wait(0.5)
+        if not getgenv().ProBoxEspActive then return end
         
-        -- Если старый бокс остался, удаляем его
-        if currentBoxes[player] then
-            pcall(function() currentBoxes[player]:Destroy() end)
+        local hrp = char:WaitForChild("HumanoidRootPart", 5)
+        if not head then return end
+        
+        -- Если старый бокс остался, сносим его
+        if activeBoxes[player] then
+            pcall(function() activeBoxes[player]:Destroy() end)
         end
         
-        -- Создаем системную обводку
-        local box = Instance.new("SelectionBox")
-        box.Name = "MobileESP"
-        box.LineThickness = 0.05
-        box.Visible = true
-        box.Adornee = char
-        box.Parent = EspFolder -- Родитель в системной папке дает видимость через стены!
-        currentBoxes[player] = box
+        -- Создаем BillboardGui, который будет намертво привязан к телу и виден сквозь стены
+        local bGui = Instance.new("BillboardGui")
+        bGui.Name = "ProBox"
+        bGui.Size = UDim2.new(0, 45, 0, 60) -- Пропорции рамки под тело человека
+        bGui.AlwaysOnTop = true -- Пробивает стены на мобилках!
+        bGui.Adornee = hrp
+        bGui.Parent = EspUi
+        activeBoxes[player] = bGui
         
-        -- Цикл проверки роли игрока в реальном времени
+        -- Рисуем неоновую рамку через UIStroke
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.BackgroundTransparency = 1
+        frame.Parent = bGui
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 1.5
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.LineJoinMode = Enum.LineJoinMode.Miter
+        stroke.Parent = frame
+        
+        -- Маленький текст с ником сверху рамки
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 0, 15)
+        label.Position = UDim2.new(0, 0, 0, -18)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 9
+        label.TextStrokeTransparency = 0.3
+        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        label.Parent = bGui
+        
+        -- Фоновый цикл отслеживания ролей и позиций
         task.spawn(function()
-            while char and char.Parent and getgenv().BoxEspActive do
+            while char and char.Parent and getgenv().ProBoxEspActive and hrp.Parent do
                 local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
                 local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
                 
-                -- Красим квадрат в зависимости от роли
+                -- Подбираем цвет рамки и текст под роль игрока
                 if knife then
-                    box.Color3 = Color3.fromRGB(255, 50, 50) -- Убийца (Красный)
+                    stroke.Color = Color3.fromRGB(255, 50, 50) -- Убийца (Красный)
+                    label.Text = "[MURDERER] " .. player.DisplayName
+                    label.TextColor3 = Color3.fromRGB(255, 50, 50)
                 elseif gun then
-                    box.Color3 = Color3.fromRGB(50, 150, 255) -- Шериф (Синий)
+                    stroke.Color = Color3.fromRGB(50, 150, 255) -- Шериф (Синий)
+                    label.Text = "[SHERIFF] " .. player.DisplayName
+                    label.TextColor3 = Color3.fromRGB(50, 150, 255)
                 else
-                    box.Color3 = Color3.fromRGB(50, 255, 100) -- Мирный (Зеленый)
+                    stroke.Color = Color3.fromRGB(50, 255, 100) -- Невинный (Зеленый)
+                    label.Text = player.DisplayName
+                    label.TextColor3 = Color3.fromRGB(200, 200, 200)
                 end
-                task.wait(1)
+                task.wait(0.5)
             end
-            if box then box:Destroy() end
-            currentBoxes[player] = nil
+            if bGui then bGui:Destroy() end
+            activeBoxes[player] = nil
         end)
     end
     
@@ -329,26 +361,34 @@ local function applyBoxESP(player)
     player.CharacterAdded:Connect(onCharAdded)
 end
 
--- Включаем ВХ для всех текущих игроков на сервере
-for _, p in ipairs(Players:GetPlayers()) do
-    applyBoxESP(p)
-end
+-- Включаем для всех на сервере
+for _, p in ipairs(Players:GetPlayers()) do applyProBox(p) end
+local joinConnection = Players.PlayerAdded:Connect(applyProBox)
 
--- Включаем ВХ для всех новых заходящих игроков
-Players.PlayerAdded:Connect(applyBoxESP)
-
--- ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ОТКЛЮЧЕНИЯ (Если захочешь выключить ВХ)
-getgenv().DisableBoxEsp = function()
-    getgenv().BoxEspActive = false
-    for _, b in pairs(currentBoxes) do
-        pcall(function() b:Destroy() end)
+-- ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ТОТАЛЬНОГО ВЫКЛЮЧЕНИЯ ВХ
+getgenv().DisableProBoxEsp = function()
+    getgenv().ProBoxEspActive = false
+    
+    -- Отключаем отслеживание новых игроков
+    if joinConnection then 
+        joinConnection:Disconnect() 
     end
-    table.clear(currentBoxes)
-    pcall(function() EspFolder:Destroy() end)
-    print("[FLONSET-BOX] Box ВХ полностью отключено.")
+    
+    -- Принудительно зачищаем абсолютно все боксы из памяти и с экрана
+    for player, box in pairs(activeBoxes) do
+        pcall(function() 
+            if box then box:Destroy() end 
+        end)
+    end
+    table.clear(activeBoxes)
+    
+    -- Жестко сносим саму папку UI
+    pcall(function() EspUi:Destroy() end)
+    print("[FLONSET-BOX] Все боксы принудительно стёрты с экрана.")
 end
 
-print("[FLONSET-BOX] Сквозные квадраты успешно запущены!")
+print("[FLONSET-BOX] Новые 2D-боксы успешно запущены!")
+
 -- =======================================================
 -- АВТО-ВЫСТРЕЛ В УБИЙЦУ ДЛЯ ШЕРИФА/ГЕРОЯ (SHOOT MURDERER)
 -- =======================================================
