@@ -1279,3 +1279,36 @@ function SilentAim:SetPredictionScale(value) Settings.PredictionScale = value en
 function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
 
 return SilentAim
+
+-- ═══════════════════════════════════════════════════════════════
+-- FLONSET HUB - GUN ESP MODULE (Xeno Safe)
+-- Подсветка пистолетов через Highlight + BillboardGui
+-- ═══════════════════════════════════════════════════════════════
+
+local GunESP = {}
+
+-- ═══════════════════════════════════════════════════════════════
+-- НАСТРОЙКИ
+-- ═══════════════════════════════════════════════════════════════
+local Settings = {
+    Enabled = false,
+    ShowHighlight = true,
+    ShowText = true,
+    HighlightColor = Color3.fromRGB(255, 255, 255),
+    TextColor = Color3.fromRGB(255, 215, 0), -- Золотой
+    MaxDistance = 500,
+    UpdateRate = 0.2, -- Обновление каждые 0.2 сек
+}
+
+-- ═══════════════════════════════════════════════════════════════
+-- СЕРВИСЫ
+-- ═══════════════════════════════════════════════════════════════
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- ═══════════════════════════════════════════════════════════════
+-- ХРАНИЛИЩЕ
+-- ═══════════════════════════════════════════════════════════════
+local Gun
