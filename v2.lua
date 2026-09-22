@@ -980,8 +980,8 @@ VisualsESP.AddSlider("Max Distance", 100, 2000, 1000, function(v)
     ESP:SetMaxDistance(v)
 end)
 -- ═══════════════════════════════════════════════════════════════
--- FLONSET HUB - SILENT AIM MODULE
--- С предикшном, Force Shoot и FOV кругом
+-- FLONSET HUB - SILENT AIM (Xeno Optimized)
+-- Чистый, простой, рабочий под Xeno
 -- ═══════════════════════════════════════════════════════════════
 
 local SilentAim = {}
@@ -991,22 +991,15 @@ local SilentAim = {}
 -- ═══════════════════════════════════════════════════════════════
 local Settings = {
     Enabled = false,
-    FOV = 150, -- Радиус FOV в пикселях
+    FOV = 150,
     ShowFOV = true,
     FOVColor = Color3.fromRGB(255, 255, 255),
     FOVThickness = 2,
     
-    -- Цели
-    TargetPart = "Head", -- Head, HumanoidRootPart, UpperTorso
-    TeamCheck = false,
-    VisibleCheck = false, -- Проверка видимости (если выключено - стреляет через стены)
+    TargetPart = "Head",
     ForceShoot = true, -- Прострел через стены
-    
-    -- Предикшн
     Prediction = true,
-    PredictionScale = 1.0, -- Множитель предикшна (0.5 - 2.0)
-    
-    -- Максимальная дистанция
+    PredictionScale = 1.0,
     MaxDistance = 500,
 }
 
@@ -1015,7 +1008,6 @@ local Settings = {
 -- ═══════════════════════════════════════════════════════════════
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -1026,9 +1018,8 @@ local Camera = workspace.CurrentCamera
 local CurrentTarget = nil
 local FOVCircle = nil
 local UpdateThread = nil
-local WeaponService = nil
-local OriginalGetMouseTargetCFrame = nil
-local OriginalGetTargetPosition = nil
+local NamecallHook = nil
+local OriginalNamecall = nil
 
 -- ═══════════════════════════════════════════════════════════════
 -- ПРОВЕРКА DRAWING API
@@ -1071,24 +1062,6 @@ local function UpdateFOVCircle()
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- ПОЛУЧЕНИЕ WEAPON SERVICE
--- ═══════════════════════════════════════════════════════════════
-local function GetWeaponService()
-    if WeaponService then return WeaponService end
-    
-    local ok, module = pcall(function()
-        return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
-    end)
-    
-    if ok and type(module) == "table" then
-        WeaponService = module
-        return module
-    end
-    
-    return nil
-end
-
--- ═══════════════════════════════════════════════════════════════
 -- ПОЛУЧЕНИЕ ЦЕЛИ В FOV
 -- ═══════════════════════════════════════════════════════════════
 local function GetTargetInFOV()
@@ -1105,9 +1078,6 @@ local function GetTargetInFOV()
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then continue end
         
-        -- Team check (если включен)
-        if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
-        
         local part = char:FindFirstChild(Settings.TargetPart) or char:FindFirstChild("HumanoidRootPart")
         if not part then continue end
         
@@ -1119,8 +1089,8 @@ local function GetTargetInFOV()
             if distance > Settings.MaxDistance then continue end
         end
         
-        -- Проверка видимости (если включена)
-        if Settings.VisibleCheck and not Settings.ForceShoot then
+        -- Проверка видимости (если не ForceShoot)
+        if not Settings.ForceShoot then
             local rayParams = RaycastParams.new()
             rayParams.FilterType = Enum.RaycastFilterType.Exclude
             rayParams.FilterDescendantsInstances = {myChar, char}
@@ -1131,7 +1101,7 @@ local function GetTargetInFOV()
                 local result = workspace:Raycast(myHead.Position, direction, rayParams)
                 
                 if result and result.Instance ~= part and not part:IsDescendantOf(result.Instance) then
-                    continue -- Препятствие между нами
+                    continue -- Препятствие
                 end
             end
         end
@@ -1155,7 +1125,7 @@ end
 -- ═══════════════════════════════════════════════════════════════
 -- ПРЕДИКШН (ПРЕДСКАЗАНИЕ ПОЗИЦИИ)
 -- ═══════════════════════════════════════════════════════════════
-local function PredictPosition(part, player)
+local function PredictPosition(part)
     if not Settings.Prediction then return part.Position end
     
     -- Получаем velocity
@@ -1190,60 +1160,55 @@ local function GetTargetPoint(player)
     if not part then return nil end
     
     -- Применяем предикшн
-    local targetPos = PredictPosition(part, player)
+    local targetPos = PredictPosition(part)
     
     return targetPos
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- ХУКИ WEAPON SERVICE
+-- NAMECALL ХУК (БЕЗОПАСНЫЙ ДЛЯ XENO)
 -- ═══════════════════════════════════════════════════════════════
 local function InstallHooks()
-    local module = GetWeaponService()
-    if not module then return end
+    if NamecallHook then return end
     
-    -- Хук GetMouseTargetCFrame
-    if type(module.GetMouseTargetCFrame) == "function" then
-        if OriginalGetMouseTargetCFrame == nil then
-            OriginalGetMouseTargetCFrame = module.GetMouseTargetCFrame
-            
-            module.GetMouseTargetCFrame = function(self, ...)
-                if Settings.Enabled then
+    OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        
+        -- Перехватываем выстрелы из Gun
+        if Settings.Enabled and method == "FireServer" then
+            if self and self.Name == "Shoot" and self.Parent and self.Parent.Name == "Gun" then
+                local args = {...}
+                
+                -- Проверяем что это наш Gun
+                local myChar = LocalPlayer.Character
+                if myChar and (self.Parent:IsDescendantOf(myChar) or self.Parent:IsDescendantOf(LocalPlayer:FindFirstChildOfClass("Backpack"))) then
                     local target = GetTargetInFOV()
                     if target then
                         CurrentTarget = target
                         local targetPos = GetTargetPoint(target)
                         if targetPos then
-                            return CFrame.new(targetPos)
+                            -- Подменяем aim CFrame на целевую точку
+                            local startCFrame = args[1]
+                            if typeof(startCFrame) == "CFrame" then
+                                local aimCFrame = CFrame.new(startCFrame.Position, targetPos)
+                                return OriginalNamecall(self, startCFrame, aimCFrame, select(3, ...))
+                            end
                         end
                     end
                 end
-                
-                return OriginalGetMouseTargetCFrame(self, ...)
             end
         end
-    end
+        
+        return OriginalNamecall(self, ...)
+    end)
     
-    -- Хук GetTargetPosition
-    if type(module.GetTargetPosition) == "function" then
-        if OriginalGetTargetPosition == nil then
-            OriginalGetTargetPosition = module.GetTargetPosition
-            
-            module.GetTargetPosition = function(self, ...)
-                if Settings.Enabled then
-                    local target = GetTargetInFOV()
-                    if target then
-                        CurrentTarget = target
-                        local targetPos = GetTargetPoint(target)
-                        if targetPos then
-                            return targetPos
-                        end
-                    end
-                end
-                
-                return OriginalGetTargetPosition(self, ...)
-            end
-        end
+    NamecallHook = true
+end
+
+local function RemoveHooks()
+    if NamecallHook then
+        -- hookmetamethod нельзя удалить, просто отключаем логику через Settings.Enabled
+        NamecallHook = nil
     end
 end
 
@@ -1284,3 +1249,33 @@ function SilentAim:Disable()
     -- Скрываем FOV круг
     if FOVCircle then
         FOVCircle.Visible = false
+    end
+    
+    CurrentTarget = nil
+    
+    print("❌ Silent Aim disabled!")
+end
+
+function SilentAim:Unload()
+    self:Disable()
+    
+    if FOVCircle then
+        pcall(function() FOVCircle:Remove() end)
+        FOVCircle = nil
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- НАСТРОЙКИ (вызывай из GUI)
+-- ═══════════════════════════════════════════════════════════════
+function SilentAim:SetFOV(value) Settings.FOV = value end
+function SilentAim:SetShowFOV(value) Settings.ShowFOV = value end
+function SilentAim:SetFOVColor(color) Settings.FOVColor = color end
+function SilentAim:SetFOVThickness(value) Settings.FOVThickness = value end
+function SilentAim:SetTargetPart(value) Settings.TargetPart = value end
+function SilentAim:SetForceShoot(value) Settings.ForceShoot = value end
+function SilentAim:SetPrediction(value) Settings.Prediction = value end
+function SilentAim:SetPredictionScale(value) Settings.PredictionScale = value end
+function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
+
+return SilentAim
