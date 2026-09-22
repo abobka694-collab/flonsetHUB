@@ -1281,12 +1281,11 @@ function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
 return SilentAim
 
 -- ═══════════════════════════════════════════════════════════════
--- FLONSET HUB - GUN ESP (Xeno Safe, без Drawing API)
+-- GUN ESP (Xeno Safe, Highlight + BillboardGui)
 -- ═══════════════════════════════════════════════════════════════
 
 local GunESP = {}
-
-local Settings = {
+local GunSettings = {
     Enabled = false,
     ShowHighlight = true,
     ShowText = true,
@@ -1295,19 +1294,11 @@ local Settings = {
     MaxDistance = 500,
 }
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-
 local GunESP_Data = {}
-local UpdateThread = nil
-local AddedConn = nil
-local RemovingConn = nil
+local GunUpdateThread = nil
+local GunAddedConn = nil
+local GunRemovingConn = nil
 
--- ═══════════════════════════════════════════════════════════════
--- ПРОВЕРКА ЧТО ПИСТОЛЕТ НЕ В ИНВЕНТАРЕ
--- ═══════════════════════════════════════════════════════════════
 local function IsInCharacter(obj)
     local node = obj.Parent
     while node and node ~= workspace do
@@ -1319,23 +1310,12 @@ local function IsInCharacter(obj)
     return false
 end
 
--- ═══════════════════════════════════════════════════════════════
--- ПОЛУЧЕНИЕ БАЗОВОЙ ЧАСТИ
--- ═══════════════════════════════════════════════════════════════
 local function GetGunPart(obj)
-    if obj:IsA("BasePart") then
-        return obj
-    elseif obj:IsA("Model") then
-        return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
-    elseif obj:IsA("Tool") then
-        return obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart", true)
-    end
+    if obj:IsA("BasePart") then return obj end
+    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true) end
     return obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- ═══════════════════════════════════════════════════════════════
--- СОЗДАНИЕ ESP
--- ═══════════════════════════════════════════════════════════════
 local function CreateGunESP(obj)
     if GunESP_Data[obj] then return end
     if not obj or not obj.Parent then return end
@@ -1344,78 +1324,60 @@ local function CreateGunESP(obj)
     local part = GetGunPart(obj)
     if not part then return end
     
-    local data = {
-        highlight = nil,
-        billboard = nil,
-        adorn = obj,
-    }
+    local data = { highlight = nil, billboard = nil }
     
-    -- Highlight
-    if Settings.ShowHighlight then
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "FlonsetGunHL_" .. obj:GetFullName()
-        highlight.Adornee = obj
-        highlight.FillTransparency = 0.7
-        highlight.OutlineTransparency = 0
-        highlight.FillColor = Settings.HighlightColor
-        highlight.OutlineColor = Settings.HighlightColor
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.Enabled = true
-        highlight.Parent = CoreGui
-        data.highlight = highlight
+    if GunSettings.ShowHighlight then
+        local hl = Instance.new("Highlight")
+        hl.Name = "FlonsetGunHL"
+        hl.Adornee = obj
+        hl.FillTransparency = 0.7
+        hl.OutlineTransparency = 0
+        hl.FillColor = GunSettings.HighlightColor
+        hl.OutlineColor = GunSettings.HighlightColor
+        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        hl.Enabled = true
+        hl.Parent = CoreGui
+        data.highlight = hl
     end
     
-    -- BillboardGui с текстом
-    if Settings.ShowText then
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "FlonsetGunBB_" .. obj:GetFullName()
-        billboard.Adornee = part
-        billboard.Size = UDim2.new(0, 100, 0, 30)
-        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-        billboard.AlwaysOnTop = true
-        billboard.ResetOnSpawn = false
-        billboard.Parent = CoreGui
+    if GunSettings.ShowText then
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "FlonsetGunBB"
+        bb.Adornee = part
+        bb.Size = UDim2.new(0, 100, 0, 30)
+        bb.StudsOffset = Vector3.new(0, 2.5, 0)
+        bb.AlwaysOnTop = true
+        bb.ResetOnSpawn = false
+        bb.Parent = CoreGui
         
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "Text"
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Text = "🔫 GUN"
-        textLabel.TextColor3 = Settings.TextColor
-        textLabel.TextStrokeTransparency = 0
-        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 16
-        textLabel.Parent = billboard
+        local txt = Instance.new("TextLabel")
+        txt.Name = "Text"
+        txt.Size = UDim2.new(1, 0, 1, 0)
+        txt.BackgroundTransparency = 1
+        txt.Text = "GUN"
+        txt.TextColor3 = GunSettings.TextColor
+        txt.TextStrokeTransparency = 0
+        txt.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        txt.Font = Enum.Font.GothamBold
+        txt.TextSize = 16
+        txt.Parent = bb
         
-        data.billboard = billboard
+        data.billboard = bb
     end
     
     GunESP_Data[obj] = data
 end
 
--- ═══════════════════════════════════════════════════════════════
--- УДАЛЕНИЕ ESP
--- ═══════════════════════════════════════════════════════════════
 local function RemoveGunESP(obj)
     local data = GunESP_Data[obj]
     if not data then return end
-    
-    if data.highlight then
-        pcall(function() data.highlight:Destroy() end)
-    end
-    if data.billboard then
-        pcall(function() data.billboard:Destroy() end)
-    end
-    
+    if data.highlight then pcall(function() data.highlight:Destroy() end) end
+    if data.billboard then pcall(function() data.billboard:Destroy() end) end
     GunESP_Data[obj] = nil
 end
 
--- ═══════════════════════════════════════════════════════════════
--- ОБНОВЛЕНИЕ ESP
--- ═══════════════════════════════════════════════════════════════
 local function UpdateGunESP()
-    if not Settings.Enabled then return end
+    if not GunSettings.Enabled then return end
     
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -1432,20 +1394,19 @@ local function UpdateGunESP()
             continue
         end
         
-        -- Проверка дистанции
         if myRoot then
             local dist = (part.Position - myRoot.Position).Magnitude
-            if dist > Settings.MaxDistance then
+            if dist > GunSettings.MaxDistance then
                 if data.highlight then data.highlight.Enabled = false end
                 if data.billboard then data.billboard.Enabled = false end
             else
-                if data.highlight and Settings.ShowHighlight then
+                if data.highlight and GunSettings.ShowHighlight then
                     data.highlight.Adornee = obj
-                    data.highlight.FillColor = Settings.HighlightColor
-                    data.highlight.OutlineColor = Settings.HighlightColor
+                    data.highlight.FillColor = GunSettings.HighlightColor
+                    data.highlight.OutlineColor = GunSettings.HighlightColor
                     data.highlight.Enabled = true
                 end
-                if data.billboard and Settings.ShowText then
+                if data.billboard and GunSettings.ShowText then
                     data.billboard.Adornee = part
                     data.billboard.Enabled = true
                 end
@@ -1454,29 +1415,23 @@ local function UpdateGunESP()
     end
 end
 
--- ═══════════════════════════════════════════════════════════════
--- ОБРАБОТКА НОВЫХ ПИСТОЛЕТОВ
--- ═══════════════════════════════════════════════════════════════
-local function OnDescendantAdded(descendant)
-    if not Settings.Enabled then return end
+local function OnGunAdded(descendant)
+    if not GunSettings.Enabled then return end
     if descendant.Name ~= "GunDrop" then return end
     if not (descendant:IsA("BasePart") or descendant:IsA("Model") or descendant:IsA("Tool")) then return end
     
     task.wait(0.1)
-    if Settings.Enabled and descendant.Parent then
+    if GunSettings.Enabled and descendant.Parent then
         CreateGunESP(descendant)
     end
 end
 
-local function OnDescendantRemoving(descendant)
+local function OnGunRemoving(descendant)
     if descendant.Name == "GunDrop" and GunESP_Data[descendant] then
         RemoveGunESP(descendant)
     end
 end
 
--- ═══════════════════════════════════════════════════════════════
--- СКАНИРОВАНИЕ СУЩЕСТВУЮЩИХ ПИСТОЛЕТОВ
--- ═══════════════════════════════════════════════════════════════
 local function ScanExistingGuns()
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj.Name == "GunDrop" 
@@ -1487,18 +1442,14 @@ local function ScanExistingGuns()
     end
 end
 
--- ═══════════════════════════════════════════════════════════════
--- ЗАПУСК / ОСТАНОВКА
--- ═══════════════════════════════════════════════════════════════
 function GunESP:Enable()
-    Settings.Enabled = true
-    
+    GunSettings.Enabled = true
     ScanExistingGuns()
     
-    AddedConn = workspace.DescendantAdded:Connect(OnDescendantAdded)
-    RemovingConn = workspace.DescendantRemoving:Connect(OnDescendantRemoving)
+    GunAddedConn = workspace.DescendantAdded:Connect(OnGunAdded)
+    GunRemovingConn = workspace.DescendantRemoving:Connect(OnGunRemoving)
     
-    UpdateThread = RunService.Heartbeat:Connect(function()
+    GunUpdateThread = RunService.Heartbeat:Connect(function()
         pcall(UpdateGunESP)
     end)
     
@@ -1506,22 +1457,11 @@ function GunESP:Enable()
 end
 
 function GunESP:Disable()
-    Settings.Enabled = false
+    GunSettings.Enabled = false
     
-    if AddedConn then
-        AddedConn:Disconnect()
-        AddedConn = nil
-    end
-    
-    if RemovingConn then
-        RemovingConn:Disconnect()
-        RemovingConn = nil
-    end
-    
-    if UpdateThread then
-        UpdateThread:Disconnect()
-        UpdateThread = nil
-    end
+    if GunAddedConn then GunAddedConn:Disconnect() GunAddedConn = nil end
+    if GunRemovingConn then GunRemovingConn:Disconnect() GunRemovingConn = nil end
+    if GunUpdateThread then GunUpdateThread:Disconnect() GunUpdateThread = nil end
     
     for obj in pairs(GunESP_Data) do
         RemoveGunESP(obj)
@@ -1530,17 +1470,12 @@ function GunESP:Disable()
     print("❌ Gun ESP disabled!")
 end
 
--- ═══════════════════════════════════════════════════════════════
--- НАСТРОЙКИ
--- ═══════════════════════════════════════════════════════════════
-function GunESP:SetShowHighlight(v) Settings.ShowHighlight = v end
-function GunESP:SetShowText(v) Settings.ShowText = v end
-function GunESP:SetHighlightColor(c) Settings.HighlightColor = c end
-function GunESP:SetTextColor(c) Settings.TextColor = c end
-function GunESP:SetMaxDistance(v) Settings.MaxDistance = v end
+function GunESP:SetShowHighlight(v) GunSettings.ShowHighlight = v end
+function GunESP:SetShowText(v) GunSettings.ShowText = v end
+function GunESP:SetMaxDistance(v) GunSettings.MaxDistance = v end
 
 -- ═══════════════════════════════════════════════════════════════
--- ИНТЕГРАЦИЯ В GUI (вставь в Visuals вкладку)
+-- GUI ЭЛЕМЕНТЫ (создаются сразу)
 -- ═══════════════════════════════════════════════════════════════
 local VisualsGun = CreateSection(VisualsTab, "Gun ESP")
 
@@ -1564,4 +1499,4 @@ VisualsGun.AddSlider("Max Distance", 100, 1000, 500, function(v)
     GunESP:SetMaxDistance(v)
 end)
 
-return GunESP
+print("✅ Gun ESP loaded!")
