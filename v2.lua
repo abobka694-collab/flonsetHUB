@@ -2,34 +2,29 @@ print("[FLONSET-GUI] Rendering pure Shitaro V2 UI interface...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
 
--- 1. BASE INTERFACE CONTAINER
+-- 1. НАДЁЖНЫЙ КОНТЕЙНЕР ДЛЯ ПК (БЕЗ COREGUI)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FlonsetShitaroGui"
 ScreenGui.ResetOnSpawn = false
+-- Принудительно вшиваем в PlayerGui — это 100% сработает на Xeno на ПК
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Fallback to PlayerGui if CoreGui is restricted by execution level
-local success, _ = pcall(function() ScreenGui.Parent = CoreGui end)
-if not success or not ScreenGui.Parent then 
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
-end
-
--- 2. MAIN WINDOW FRAME (Matte Dark Theme)
+-- 2. ГЛАВНОЕ ОКНО ЧИТА (Матовый Тёмный Дизайн)
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 480, 0, 320)
 MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true -- Allows smooth dragging via mouse across the desktop
+MainFrame.Draggable = true -- Позволяет плавно перетаскивать меню мышкой
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- 3. SIDEBAR NAVIGATION PANEL
+-- 3. БОКОВАЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar)
 local SideBar = Instance.new("Frame")
 SideBar.Size = UDim2.new(0, 110, 1, 0)
 SideBar.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
@@ -40,7 +35,6 @@ local SideCorner = Instance.new("UICorner")
 SideCorner.CornerRadius = UDim.new(0, 12)
 SideCorner.Parent = SideBar
 
--- Prevents right side corners of the sidebar from overlapping main frame rounding
 local SideHide = Instance.new("Frame")
 SideHide.Size = UDim2.new(0, 20, 1, 0)
 SideHide.Position = UDim2.new(1, -20, 0, 0)
@@ -48,7 +42,7 @@ SideHide.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
 SideHide.BorderSizePixel = 0
 SideHide.Parent = SideBar
 
--- LOGO: Custom Capital "F" at the top of the sidebar
+-- ЛОГОТИП: Буква "F" вверху панели
 local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(1, 0, 0, 60)
 Logo.Text = "F"
@@ -58,7 +52,7 @@ Logo.TextSize = 36
 Logo.BackgroundTransparency = 1
 Logo.Parent = SideBar
 
--- Scrollable container for tab category list
+-- Контейнер для списка вкладок с прокруткой
 local ButtonScroll = Instance.new("ScrollingFrame")
 ButtonScroll.Size = UDim2.new(1, 0, 1, -70)
 ButtonScroll.Position = UDim2.new(0, 0, 0, 65)
@@ -74,7 +68,7 @@ ScrollLayout.Padding = UDim.new(0, 4)
 ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 ScrollLayout.Parent = ButtonScroll
 
--- 4. CONTAINER MAIN CONTENT PANEL (Where cards are located)
+-- 4. ГЛАВНАЯ ПАНЕЛЬ ДЛЯ КОНТЕНТА (Где плитки)
 local ContentPanel = Instance.new("Frame")
 ContentPanel.Size = UDim2.new(1, -125, 1, -20)
 ContentPanel.Position = UDim2.new(0, 117, 0, 10)
@@ -84,7 +78,7 @@ ContentPanel.Parent = MainFrame
 local tabs = {}
 local tabButtons = {}
 
--- Automatically aggregates tabs inside sidebar menu
+-- Функция автоматической сборки вкладок
 local function CreateTab(tabName, iconText)
     local TabContainer = Instance.new("ScrollingFrame")
     TabContainer.Size = UDim2.new(1, 0, 1, 0)
@@ -95,7 +89,6 @@ local function CreateTab(tabName, iconText)
     TabContainer.Visible = false
     TabContainer.Parent = ContentPanel
     
-    -- Automatic square grid builder for alignment matching the layout
     local Grid = Instance.new("UIGridLayout")
     Grid.CellSize = UDim2.new(0, 105, 0, 95)
     Grid.CellPadding = UDim2.new(0, 10, 0, 10)
@@ -116,7 +109,6 @@ local function CreateTab(tabName, iconText)
     
     table.insert(tabButtons, TabBtn)
     
-    -- Dynamic page switcher callback
     TabBtn.MouseButton1Click:Connect(function()
         for _, container in pairs(tabs) do container.Visible = false end
         for _, btn in ipairs(tabButtons) do btn.TextColor3 = Color3.fromRGB(130, 130, 145) end
@@ -125,7 +117,7 @@ local function CreateTab(tabName, iconText)
     end)
 end
 
--- Generates uniform click tiles inside selected grids
+-- Функция создания карточек-плиток
 local function AddCard(tabName, titleText, descText)
     local container = tabs[tabName]
     if not container then return end
@@ -140,7 +132,6 @@ local function AddCard(tabName, titleText, descText)
     CardCorner.CornerRadius = UDim.new(0, 8)
     CardCorner.Parent = Card
     
-    -- Mockup image container inside module tile
     local ImgBox = Instance.new("Frame")
     ImgBox.Size = UDim2.new(1, -12, 0, 50)
     ImgBox.Position = UDim2.new(0, 6, 0, 6)
@@ -199,7 +190,7 @@ local function AddCard(tabName, titleText, descText)
 end
 
 -- =======================================================
--- INITIALIZE SECTION MAP HIERARCHY
+-- СБОРКА ТВОИХ РАЗДЕЛОВ МЕНЮ
 -- =======================================================
 CreateTab("Visuals", "👁")
 CreateTab("Movement", "⚡")
@@ -207,13 +198,13 @@ CreateTab("Target", "🎯")
 CreateTab("Skins", "🎨")
 CreateTab("Config", "⚙")
 
--- Forces the first page "Visuals" active immediately upon startup
-if tabs["Visuals"] and tabButtons[1] then
+-- Открываем вкладку Visuals по умолчанию
+if tabs["Visuals"] and tabButtons then
     tabs["Visuals"].Visible = true
     tabButtons[1].TextColor3 = Color3.fromRGB(255, 255, 255)
 end
 
--- Populate tab categories with empty toggle cards
+-- Расставляем плитки
 AddCard("Visuals", "Neon Chams", "ESP")
 AddCard("Visuals", "Player Box", "ESP")
 
@@ -227,7 +218,7 @@ AddCard("Target", "Fling Targets", "Fling")
 AddCard("Skins", "Knife Skin", "Weapon")
 AddCard("Skins", "Gun Skin", "Weapon")
 
--- Clean close out panel under config branch
+-- Кнопка закрытия
 local UnloadBtn = Instance.new("TextButton")
 UnloadBtn.Size = UDim2.new(0, 105, 0, 32)
 UnloadBtn.Position = UDim2.new(0, 5, 0, 40)
@@ -246,4 +237,4 @@ UnloadBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-print("[FLONSET-GUI] Pure interface frames spawned successfully.")
+print("[FLONSET-GUI] Pure interface frames spawned successfully through PlayerGui.")
