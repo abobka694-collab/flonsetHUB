@@ -19,7 +19,7 @@ end
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 320, 0, 200)
 MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24) -- Глубокий темный тон
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true -- Меню можно плавно перетаскивать мышкой по экрану ПК!
@@ -29,10 +29,10 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
--- 3. БОКОВАЯ СТИЛЬНАЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar)
+-- 3. БОКОВАЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar)
 local SideBar = Instance.new("Frame")
 SideBar.Size = UDim2.new(0, 75, 1, 0)
-SideBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34) -- Сайдбар чуть светлее основы
+SideBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
 SideBar.BorderSizePixel = 0
 SideBar.Parent = MainFrame
 
@@ -58,7 +58,7 @@ Logo.TextSize = 28
 Logo.BackgroundTransparency = 1
 Logo.Parent = SideBar
 
--- Контейнер для списка вкладок
+-- Контейнер для вертикального списка вкладок
 local ButtonScroll = Instance.new("ScrollingFrame")
 ButtonScroll.Size = UDim2.new(1, 0, 1, -70)
 ButtonScroll.Position = UDim2.new(0, 0, 0, 50)
@@ -74,7 +74,7 @@ ScrollLayout.Padding = UDim.new(0, 4)
 ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 ScrollLayout.Parent = ButtonScroll
 
--- 4. ГЛАВНАЯ ПАНЕЛЬ ДЛЯ КОНТЕНТА (Там, где отображаются плитки)
+-- 4. ГЛАВНАЯ ПАНЕЛЬ ДЛЯ КОНТЕНТА
 local ContentPanel = Instance.new("Frame")
 ContentPanel.Size = UDim2.new(1, -85, 1, -10)
 ContentPanel.Position = UDim2.new(0, 80, 0, 5)
@@ -94,10 +94,10 @@ local function CreateTab(tabName, shortName)
     
     tabs[tabName] = TabContainer
     
-    local btnCount = #tabButtons
+    local btnCount = #tabButtons + 1
     local TabBtn = Instance.new("TextButton")
     TabBtn.Size = UDim2.new(0.85, 0, 0, 24)
-    TabBtn.Position = UDim2.new(0.075, 0, 0, (btnCount * 28))
+    TabBtn.Position = UDim2.new(0.075, 0, 0, ((btnCount - 1) * 28))
     TabBtn.Text = shortName
     TabBtn.Font = Enum.Font.GothamBold
     TabBtn.TextSize = 9
@@ -109,12 +109,12 @@ local function CreateTab(tabName, shortName)
     BCorner.CornerRadius = UDim.new(0, 5)
     BCorner.Parent = TabBtn
     
-    table.insert(tabButtons, TabBtn)
+    tabButtons[tabName] = TabBtn
     
     -- Логика плавного переключения вкладок в меню
     TabBtn.MouseButton1Click:Connect(function()
         for _, container in pairs(tabs) do container.Visible = false end
-        for _, btn in ipairs(tabButtons) do 
+        for _, btn in pairs(tabButtons) do 
             btn.BackgroundColor3 = Color3.fromRGB(34, 34, 46)
             btn.TextColor3 = Color3.fromRGB(130, 130, 145) 
         end
@@ -143,7 +143,6 @@ local function AddCard(tabName, titleText, descText, index)
     CardCorner.CornerRadius = UDim.new(0, 8)
     CardCorner.Parent = Card
     
-    -- Серая мини-картинка внутри плитки (Заглушка)
     local ImgBox = Instance.new("Frame")
     ImgBox.Size = UDim2.new(1, -12, 0, 50)
     ImgBox.Position = UDim2.new(0, 6, 0, 6)
@@ -164,7 +163,6 @@ local function AddCard(tabName, titleText, descText, index)
     InnerText.BackgroundTransparency = 1
     InnerText.Parent = ImgBox
     
-    -- Текст названия функции на карточке
     local Title = Instance.new("TextLabel")
     Title.Size = UDim2.new(1, -12, 0, 18)
     Title.Position = UDim2.new(0, 6, 0, 60)
@@ -176,7 +174,6 @@ local function AddCard(tabName, titleText, descText, index)
     Title.BackgroundTransparency = 1
     Title.Parent = Card
     
-    -- Нижняя строчка статуса (Меняет цвет при нажатии)
     local Status = Instance.new("TextLabel")
     Status.Size = UDim2.new(1, -12, 0, 12)
     Status.Position = UDim2.new(0, 6, 0, 76)
@@ -193,7 +190,7 @@ local function AddCard(tabName, titleText, descText, index)
         enabled = not enabled
         if enabled then
             Status.Text = descText .. ": ON"
-            Status.TextColor3 = Color3.fromRGB(0, 200, 120) -- Зеленеет при клике
+            Status.TextColor3 = Color3.fromRGB(0, 200, 120)
             Card.BackgroundColor3 = Color3.fromRGB(34, 46, 42)
         else
             Status.Text = descText .. ": OFF"
@@ -203,22 +200,20 @@ local function AddCard(tabName, titleText, descText, index)
     end)
 end
 
--- =======================================================
 -- СБОРКА ТВОИХ РАЗДЕЛОВ МЕНЮ
--- =======================================================
 CreateTab("Visuals", "VISUAL")
 CreateTab("Movement", "MOVE")
 CreateTab("Target", "TARGET")
 CreateTab("Config", "CONFIG")
 
--- Открываем вкладку VISUALS по умолчанию
-if tabs["Visuals"] and tabButtons then
+-- Безопасное открытие дефолтной вкладки
+if tabs["Visuals"] and tabButtons["Visuals"] then
     tabs["Visuals"].Visible = true
-    tabButtons.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    tabButtons.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tabButtons["Visuals"].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    tabButtons["Visuals"].TextColor3 = Color3.fromRGB(255, 255, 255)
 end
 
--- Расставляем интерактивные плитки по вкладкам
+-- Расставляем плитки
 AddCard("Visuals", "Neon Chams", "ESP", 1)
 AddCard("Visuals", "Player Box", "ESP", 2)
 
@@ -228,7 +223,6 @@ AddCard("Movement", "Auto-Grab", "Grab", 2)
 AddCard("Target", "Shoot Murderer", "Aim", 1)
 AddCard("Target", "Kill Aura", "Aura", 2)
 
--- Кнопка полного закрытия чита во вкладке CONFIG
 local UnloadBtn = Instance.new("TextButton")
 UnloadBtn.Size = UDim2.new(0, 105, 0, 32)
 UnloadBtn.Position = UDim2.new(0, 5, 0, 40)
