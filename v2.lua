@@ -644,3 +644,482 @@ print("🔑 Press [G] to toggle menu")
 -- ═══════════════════════════════════════════════════════════════
 task.wait(0.5)
 ToggleMenu() -- Автоматически открываем меню при загрузке
+-- ═══════════════════════════════════════════════════════════════
+-- FLONSET HUB - 2D BOX ESP WITH ROLES (Xeno Optimized)
+-- Цветные коробки + отображение ролей
+-- ═══════════════════════════════════════════════════════════════
+
+local BoxESP = {}
+
+-- ═══════════════════════════════════════════════════════════════
+-- НАСТРОЙКИ
+-- ═══════════════════════════════════════════════════════════════
+local Settings = {
+    Enabled = false,
+    VisibleThroughWalls = true,
+    ShowName = true,
+    ShowDistance = true,
+    ShowRole = true,
+    Thickness = 2,
+    MaxDistance = 1000,
+    UpdateRate = 0.05,
+    
+    -- Цвета по ролям
+    MurdererColor = Color3.fromRGB(255, 60, 60),
+    SheriffColor = Color3.fromRGB(0, 153, 255),
+    InnocentColor = Color3.fromRGB(255, 255, 255),
+}
+
+-- ═══════════════════════════════════════════════════════════════
+-- СЕРВИСЫ
+-- ═══════════════════════════════════════════════════════════════
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПРОВЕРКА DRAWING API
+-- ═══════════════════════════════════════════════════════════════
+local DrawingAvailable = pcall(function()
+    local test = Drawing.new("Line")
+    test:Remove()
+end)
+
+if not DrawingAvailable then
+    warn("[FlonsetHUB] Drawing API not available, Box ESP disabled")
+    return BoxESP
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ХРАНИЛИЩЕ
+-- ═══════════════════════════════════════════════════════════════
+local BoxESP_Data = {}
+local RoleCache = {}
+local RoundModule = nil
+local UpdateThread = nil
+local LastUpdate = 0
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ МОДУЛЯ РАУНДА
+-- ═══════════════════════════════════════════════════════════════
+local function GetRoundModule()
+    if RoundModule then return RoundModule end
+    
+    local ok, module = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
+    end)
+    
+    if ok and type(module) == "table" then
+        RoundModule = module
+        return module
+    end
+    
+    return nil
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ОПРЕДЕЛЕНИЕ РОЛИ
+-- ═══════════════════════════════════════════════════════════════
+local function GetPlayerRole(player)
+    if not player or not player.Parent then return "Innocent" end
+    
+    -- Проверяем кэш
+    if RoleCache[player.Name] then
+        return RoleCache[player.Name]
+    end
+    
+    -- Получаем из модуля раунда
+    local module = GetRoundModule()
+    if module and module.PlayerData then
+        local data = module.PlayerData[player.Name]
+        if data and data.Role then
+            local role = data.Role
+            if role == "Murderer" then
+                RoleCache[player.Name] = "Murderer"
+                return "Murderer"
+            elseif role == "Sheriff" or role == "Hero" then
+                RoleCache[player.Name] = "Sheriff"
+                return "Sheriff"
+            end
+        end
+    end
+    
+    -- Проверяем наличие пушки (Sheriff)
+    local char = player.Character
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    
+    if (char and char:FindFirstChild("Gun")) or (backpack and backpack:FindFirstChild("Gun")) then
+        RoleCache[player.Name] = "Sheriff"
+        return "Sheriff"
+    end
+    
+    -- Проверяем наличие ножа (Murderer)
+    if (char and char:FindFirstChild("Knife")) or (backpack and backpack:FindFirstChild("Knife")) then
+        RoleCache[player.Name] = "Murderer"
+        return "Murderer"
+    end
+    
+    RoleCache[player.Name] = "Innocent"
+    return "Innocent"
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ ЦВЕТА ПО РОЛИ
+-- ═══════════════════════════════════════════════════════════════
+local function GetRoleColor(role)
+    if role == "Murderer" then
+        return Settings.MurdererColor
+    elseif role == "Sheriff" then
+        return Settings.SheriffColor
+    else
+        return Settings.InnocentColor
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ 2D КООРДИНАТ
+-- ═══════════════════════════════════════════════════════════════
+local function Get2DCoords(position)
+    local screenPos, onScreen = Camera:WorldToViewportPoint(position)
+    return Vector2.new(screenPos.X, screenPos.Y), onScreen, screenPos.Z
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ РАЗМЕРА КОРОБКИ
+-- ═══════════════════════════════════════════════════════════════
+local function GetBoxSize(character)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil, nil end
+    
+    local width = 4
+    local height = 6
+    
+    local hum = character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if hum.RigType == Enum.HumanoidRigType.R15 then
+            width = 4
+            height = 6.5
+        else
+            width = 3
+            height = 5.5
+        end
+    end
+    
+    return width, height
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- СОЗДАНИЕ BOX ESP ДЛЯ ИГРОКА
+-- ═══════════════════════════════════════════════════════════════
+local function CreateBoxESP(player)
+    if player == LocalPlayer then return end
+    if BoxESP_Data[player] then return end
+    
+    local data = {
+        lines = {},
+        name_label = nil,
+        dist_label = nil,
+        role_label = nil,
+    }
+    
+    -- Создаём 4 линии для коробки
+    for i = 1, 4 do
+        local line = Drawing.new("Line")
+        line.Thickness = Settings.Thickness
+        line.Color = Settings.InnocentColor
+        line.Visible = false
+        data.lines[i] = line
+    end
+    
+    -- Создаём текст для имени
+    if Settings.ShowName then
+        local nameLabel = Drawing.new("Text")
+        nameLabel.Size = 14
+        nameLabel.Center = true
+        nameLabel.Outline = true
+        nameLabel.Color = Color3.fromRGB(255, 255, 255)
+        nameLabel.Visible = false
+        data.name_label = nameLabel
+    end
+    
+    -- Создаём текст для дистанции
+    if Settings.ShowDistance then
+        local distLabel = Drawing.new("Text")
+        distLabel.Size = 12
+        distLabel.Center = true
+        distLabel.Outline = true
+        distLabel.Color = Color3.fromRGB(200, 200, 200)
+        distLabel.Visible = false
+        data.dist_label = distLabel
+    end
+    
+    -- Создаём текст для роли
+    if Settings.ShowRole then
+        local roleLabel = Drawing.new("Text")
+        roleLabel.Size = 11
+        roleLabel.Center = true
+        roleLabel.Outline = true
+        roleLabel.Color = Color3.fromRGB(255, 255, 255)
+        roleLabel.Visible = false
+        data.role_label = roleLabel
+    end
+    
+    BoxESP_Data[player] = data
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- УДАЛЕНИЕ BOX ESP ИГРОКА
+-- ═══════════════════════════════════════════════════════════════
+local function RemoveBoxESP(player)
+    local data = BoxESP_Data[player]
+    if not data then return end
+    
+    for i = 1, 4 do
+        if data.lines[i] then
+            pcall(function() data.lines[i]:Remove() end)
+        end
+    end
+    
+    if data.name_label then
+        pcall(function() data.name_label:Remove() end)
+    end
+    if data.dist_label then
+        pcall(function() data.dist_label:Remove() end)
+    end
+    if data.role_label then
+        pcall(function() data.role_label:Remove() end)
+    end
+    
+    BoxESP_Data[player] = nil
+    RoleCache[player.Name] = nil
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ОБНОВЛЕНИЕ BOX ESP
+-- ═══════════════════════════════════════════════════════════════
+local function UpdateBoxESP()
+    if not Settings.Enabled then return end
+    
+    local now = tick()
+    if now - LastUpdate < Settings.UpdateRate then return end
+    LastUpdate = now
+    
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        
+        local data = BoxESP_Data[player]
+        
+        if char and root and hum and hum.Health > 0 then
+            if not data then
+                CreateBoxESP(player)
+                data = BoxESP_Data[player]
+            end
+            
+            if not data then continue end
+            
+            -- Получаем роль и цвет
+            local role = GetPlayerRole(player)
+            local color = GetRoleColor(role)
+            
+            -- Получаем позицию головы и ног
+            local headPos = head and head.Position or root.Position + Vector3.new(0, 3, 0)
+            local footPos = root.Position - Vector3.new(0, 3, 0)
+            
+            -- Получаем 2D координаты
+            local head2D, headOnScreen, headDepth = Get2DCoords(headPos)
+            local foot2D, footOnScreen, footDepth = Get2DCoords(footPos)
+            
+            -- Проверяем что игрок на экране и в пределах дистанции
+            local distance = myRoot and (root.Position - myRoot.Position).Magnitude or 0
+            local shouldShow = headOnScreen and footOnScreen and headDepth > 0 and distance <= Settings.MaxDistance
+            
+            if shouldShow then
+                -- Вычисляем размер коробки
+                local boxWidth, boxHeight = GetBoxSize(char)
+                
+                -- Масштабируем размер в зависимости от дистанции
+                local scale = math.clamp(50 / distance, 0.3, 2)
+                local width2D = boxWidth * scale * 10
+                local height2D = (head2D - foot2D).Magnitude
+                
+                -- Вычисляем углы коробки
+                local topLeft = Vector2.new(head2D.X - width2D / 2, head2D.Y)
+                local topRight = Vector2.new(head2D.X + width2D / 2, head2D.Y)
+                local bottomLeft = Vector2.new(foot2D.X - width2D / 2, foot2D.Y)
+                local bottomRight = Vector2.new(foot2D.X + width2D / 2, foot2D.Y)
+                
+                -- Обновляем линии с цветом роли
+                data.lines[1].From = topLeft
+                data.lines[1].To = topRight
+                data.lines[1].Visible = true
+                
+                data.lines[2].From = topRight
+                data.lines[2].To = bottomRight
+                data.lines[2].Visible = true
+                
+                data.lines[3].From = bottomRight
+                data.lines[3].To = bottomLeft
+                data.lines[3].Visible = true
+                
+                data.lines[4].From = bottomLeft
+                data.lines[4].To = topLeft
+                data.lines[4].Visible = true
+                
+                -- Обновляем цвет и толщину
+                for i = 1, 4 do
+                    data.lines[i].Color = color
+                    data.lines[i].Thickness = Settings.Thickness
+                end
+                
+                -- Обновляем имя
+                if data.name_label then
+                    data.name_label.Text = player.DisplayName
+                    data.name_label.Position = Vector2.new(head2D.X, head2D.Y - 35)
+                    data.name_label.Visible = true
+                end
+                
+                -- Обновляем роль
+                if data.role_label then
+                    data.role_label.Text = "[" .. role .. "]"
+                    data.role_label.Position = Vector2.new(head2D.X, head2D.Y - 20)
+                    data.role_label.Color = color
+                    data.role_label.Visible = true
+                end
+                
+                -- Обновляем дистанцию
+                if data.dist_label then
+                    data.dist_label.Text = string.format("%.0fm", distance)
+                    data.dist_label.Position = Vector2.new(head2D.X, foot2D.Y + 5)
+                    data.dist_label.Visible = true
+                end
+            else
+                -- Скрываем если игрок не на экране или далеко
+                for i = 1, 4 do
+                    data.lines[i].Visible = false
+                end
+                if data.name_label then data.name_label.Visible = false end
+                if data.dist_label then data.dist_label.Visible = false end
+                if data.role_label then data.role_label.Visible = false end
+            end
+        else
+            -- Скрываем если игрок мёртв
+            if data then
+                for i = 1, 4 do
+                    data.lines[i].Visible = false
+                end
+                if data.name_label then data.name_label.Visible = false end
+                if data.dist_label then data.dist_label.Visible = false end
+                if data.role_label then data.role_label.Visible = false end
+            end
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ЗАПУСК / ОСТАНОВКА
+-- ═══════════════════════════════════════════════════════════════
+function BoxESP:Enable()
+    Settings.Enabled = true
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            CreateBoxESP(player)
+        end
+    end
+    
+    BoxESP.PlayerAddedConn = Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            if Settings.Enabled then
+                CreateBoxESP(player)
+            end
+        end)
+    end)
+    
+    BoxESP.PlayerRemovingConn = Players.PlayerRemoving:Connect(function(player)
+        RemoveBoxESP(player)
+    end)
+    
+    UpdateThread = RunService.RenderStepped:Connect(function()
+        pcall(UpdateBoxESP)
+    end)
+end
+
+function BoxESP:Disable()
+    Settings.Enabled = false
+    
+    if BoxESP.PlayerAddedConn then
+        BoxESP.PlayerAddedConn:Disconnect()
+        BoxESP.PlayerAddedConn = nil
+    end
+    
+    if BoxESP.PlayerRemovingConn then
+        BoxESP.PlayerRemovingConn:Disconnect()
+        BoxESP.PlayerRemovingConn = nil
+    end
+    
+    if UpdateThread then
+        UpdateThread:Disconnect()
+        UpdateThread = nil
+    end
+    
+    for player in pairs(BoxESP_Data) do
+        RemoveBoxESP(player)
+    end
+    
+    table.clear(RoleCache)
+end
+
+function BoxESP:Unload()
+    self:Disable()
+    BoxESP_Data = {}
+    RoleCache = {}
+    RoundModule = nil
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- НАСТРОЙКИ (вызывай из GUI)
+-- ═══════════════════════════════════════════════════════════════
+function BoxESP:SetThickness(thickness)
+    Settings.Thickness = thickness
+end
+
+function BoxESP:SetMaxDistance(distance)
+    Settings.MaxDistance = distance
+end
+
+function BoxESP:SetShowName(value)
+    Settings.ShowName = value
+end
+
+function BoxESP:SetShowDistance(value)
+    Settings.ShowDistance = value
+end
+
+function BoxESP:SetShowRole(value)
+    Settings.ShowRole = value
+end
+
+function BoxESP:SetMurdererColor(color)
+    Settings.MurdererColor = color
+end
+
+function BoxESP:SetSheriffColor(color)
+    Settings.SheriffColor = color
+end
+
+function BoxESP:SetInnocentColor(color)
+    Settings.InnocentColor = color
+end
+
+return BoxESP
