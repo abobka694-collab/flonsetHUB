@@ -1279,8 +1279,3 @@ function SilentAim:SetPredictionScale(value) Settings.PredictionScale = value en
 function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
 
 return SilentAim
-
--- ═══════════════════════════════════════════════════════════════
--- MOVEMENT ВКЛАДКА
--- ═══════════════════════════════════════════════════════════════
-local MovementTab = CreateTab("Movement")
