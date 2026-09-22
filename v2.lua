@@ -1280,208 +1280,78 @@ function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
 
 return SilentAim
 -- ═══════════════════════════════════════════════════════════════
--- FLONSET HUB - INVISIBLE MODULE (Xeno Compatible)
+-- FLONSET HUB - INVISIBLE (Xeno Safe)
+-- Только Transparency, без хуков и скрытых свойств
 -- ═══════════════════════════════════════════════════════════════
 
 local Invisible = {}
 
 local Settings = {
     Enabled = false,
-    Mode = "Transparency", -- "Transparency" или "Void"
-    UpdateRate = 0.1,
 }
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Workspace = game:GetService("Workspace")
 
 local OriginalTransparency = {}
-local OriginalLTM = {}
 local UpdateThread = nil
-local VoidThread = nil
-local OriginalFallenHeight = nil
-local SavedPosition = nil
 
 -- ═══════════════════════════════════════════════════════════════
--- РЕЖИМ 1: TRANSPARENCY (Прозрачность)
+-- СОХРАНЕНИЕ ОРИГИНАЛЬНЫХ ЗНАЧЕНИЙ
 -- ═══════════════════════════════════════════════════════════════
 local function SaveOriginals(char)
     table.clear(OriginalTransparency)
-    table.clear(OriginalLTM)
     
     for _, part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             OriginalTransparency[part] = part.Transparency
-            OriginalLTM[part] = part.LocalTransparencyModifier
         elseif part:IsA("Decal") or part:IsA("Texture") then
             OriginalTransparency[part] = part.Transparency
-        elseif part:IsA("ParticleEmitter") or part:IsA("Fire") 
-            or part:IsA("Smoke") or part:IsA("Sparkles")
-            or part:IsA("Beam") or part:IsA("Trail") then
-            OriginalTransparency[part] = part.Enabled
         end
     end
 end
 
-local function ApplyTransparency(char)
+-- ═══════════════════════════════════════════════════════════════
+-- ПРИМЕНЕНИЕ НЕВИДИМОСТИ
+-- ═══════════════════════════════════════════════════════════════
+local function ApplyInvisible(char)
     if not char then return end
     
     for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            pcall(function()
+        pcall(function()
+            if part:IsA("BasePart") then
                 part.Transparency = 1
-                part.LocalTransparencyModifier = 1
-            end)
-        elseif part:IsA("Decal") or part:IsA("Texture") then
-            pcall(function()
+            elseif part:IsA("Decal") or part:IsA("Texture") then
                 part.Transparency = 1
-            end)
-        elseif part:IsA("ParticleEmitter") or part:IsA("Fire") 
-            or part:IsA("Smoke") or part:IsA("Sparkles")
-            or part:IsA("Beam") or part:IsA("Trail") then
-            pcall(function()
+            elseif part:IsA("ParticleEmitter") or part:IsA("Fire") 
+                or part:IsA("Smoke") or part:IsA("Sparkles")
+                or part:IsA("Beam") or part:IsA("Trail") then
                 part.Enabled = false
-            end)
-        elseif part:IsA("ForceField") then
-            pcall(function()
+            elseif part:IsA("ForceField") then
                 part.Visible = false
-            end)
-        end
+            end
+        end)
     end
 end
 
-local function RestoreTransparency(char)
+-- ═══════════════════════════════════════════════════════════════
+-- ВОССТАНОВЛЕНИЕ
+-- ═══════════════════════════════════════════════════════════════
+local function RestoreInvisible(char)
     if not char then return end
     
     for part, value in pairs(OriginalTransparency) do
         if part and part.Parent then
             pcall(function()
-                if part:IsA("BasePart") then
+                if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("Texture") then
                     part.Transparency = value
-                elseif part:IsA("Decal") or part:IsA("Texture") then
-                    part.Transparency = value
-                elseif part:IsA("ParticleEmitter") or part:IsA("Fire") 
-                    or part:IsA("Smoke") or part:IsA("Sparkles")
-                    or part:IsA("Beam") or part:IsA("Trail") then
-                    part.Enabled = value
                 end
             end)
         end
     end
     
-    for part, value in pairs(OriginalLTM) do
-        if part and part.Parent then
-            pcall(function()
-                part.LocalTransparencyModifier = value
-            end)
-        end
-    end
-    
     table.clear(OriginalTransparency)
-    table.clear(OriginalLTM)
-end
-
-local function StartTransparencyMode()
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    SaveOriginals(char)
-    ApplyTransparency(char)
-    
-    -- Постоянно обновляем чтобы сервер не восстановил
-    UpdateThread = RunService.Heartbeat:Connect(function()
-        if not Settings.Enabled or Settings.Mode ~= "Transparency" then return end
-        local c = LocalPlayer.Character
-        if c then
-            ApplyTransparency(c)
-        end
-    end)
-end
-
-local function StopTransparencyMode()
-    if UpdateThread then
-        UpdateThread:Disconnect()
-        UpdateThread = nil
-    end
-    
-    local char = LocalPlayer.Character
-    if char then
-        RestoreTransparency(char)
-    end
-end
-
--- ═══════════════════════════════════════════════════════════════
--- РЕЖИМ 2: VOID (Телепорт под карту)
--- ═══════════════════════════════════════════════════════════════
-local function StartVoidMode()
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    -- Сохраняем позицию
-    SavedPosition = hrp.CFrame
-    
-    -- Отключаем FallenPartsDestroyHeight чтобы не умереть
-    OriginalFallenHeight = Workspace.FallenPartsDestroyHeight
-    pcall(function()
-        Workspace.FallenPartsDestroyHeight = -math.huge
-    end)
-    
-    -- Телепортируем под карту
-    pcall(function()
-        hrp.CFrame = CFrame.new(hrp.Position.X, -500, hrp.Position.Z)
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
-    end)
-    
-    -- Держим под картой
-    VoidThread = RunService.Heartbeat:Connect(function()
-        if not Settings.Enabled or Settings.Mode ~= "Void" then return end
-        local c = LocalPlayer.Character
-        if c then
-            local h = c:FindFirstChild("HumanoidRootPart")
-            if h and h.Position.Y > -100 then
-                pcall(function()
-                    h.CFrame = CFrame.new(h.Position.X, -500, h.Position.Z)
-                    h.AssemblyLinearVelocity = Vector3.zero
-                end)
-            end
-        end
-    end)
-end
-
-local function StopVoidMode()
-    if VoidThread then
-        VoidThread:Disconnect()
-        VoidThread = nil
-    end
-    
-    -- Восстанавливаем FallenPartsDestroyHeight
-    if OriginalFallenHeight then
-        pcall(function()
-            Workspace.FallenPartsDestroyHeight = OriginalFallenHeight
-        end)
-        OriginalFallenHeight = nil
-    end
-    
-    -- Возвращаем на сохранённую позицию
-    if SavedPosition then
-        local char = LocalPlayer.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                pcall(function()
-                    hrp.CFrame = SavedPosition + Vector3.new(0, 5, 0)
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
-                end)
-            end
-        end
-        SavedPosition = nil
-    end
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -1490,35 +1360,39 @@ end
 function Invisible:Enable()
     Settings.Enabled = true
     
-    if Settings.Mode == "Transparency" then
-        StartTransparencyMode()
-    elseif Settings.Mode == "Void" then
-        StartVoidMode()
+    local char = LocalPlayer.Character
+    if char then
+        SaveOriginals(char)
+        ApplyInvisible(char)
     end
+    
+    -- Постоянно обновляем
+    UpdateThread = RunService.Heartbeat:Connect(function()
+        if not Settings.Enabled then return end
+        local c = LocalPlayer.Character
+        if c then
+            ApplyInvisible(c)
+        end
+    end)
     
     -- Слушаем респавн
     Invisible.CharConn = LocalPlayer.CharacterAdded:Connect(function(char)
         task.wait(0.5)
         if Settings.Enabled then
-            if Settings.Mode == "Transparency" then
-                SaveOriginals(char)
-                ApplyTransparency(char)
-            elseif Settings.Mode == "Void" then
-                StartVoidMode()
-            end
+            SaveOriginals(char)
+            ApplyInvisible(char)
         end
     end)
     
-    print("✅ Invisible enabled! Mode: " .. Settings.Mode)
+    print("✅ Invisible enabled!")
 end
 
 function Invisible:Disable()
     Settings.Enabled = false
     
-    if Settings.Mode == "Transparency" then
-        StopTransparencyMode()
-    elseif Settings.Mode == "Void" then
-        StopVoidMode()
+    if UpdateThread then
+        UpdateThread:Disconnect()
+        UpdateThread = nil
     end
     
     if Invisible.CharConn then
@@ -1526,17 +1400,12 @@ function Invisible:Disable()
         Invisible.CharConn = nil
     end
     
-    print("❌ Invisible disabled!")
-end
-
-function Invisible:SetMode(mode)
-    if Settings.Enabled then
-        self:Disable()
-        Settings.Mode = mode
-        self:Enable()
-    else
-        Settings.Mode = mode
+    local char = LocalPlayer.Character
+    if char then
+        RestoreInvisible(char)
     end
+    
+    print("❌ Invisible disabled!")
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -1550,14 +1419,4 @@ PlayerInvis.AddToggle("Enable Invisible", false, function(v)
     else
         Invisible:Disable()
     end
-end)
-
-PlayerInvis.AddButton("Mode: Transparency (Safe)", function()
-    Invisible:SetMode("Transparency")
-    print("Mode: Transparency")
-end)
-
-PlayerInvis.AddButton("Mode: Void (Under Map)", function()
-    Invisible:SetMode("Void")
-    print("Mode: Void")
 end)
