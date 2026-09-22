@@ -1,250 +1,155 @@
-print("[FLONSET-KITI] Rendering pure Kiti UI template...")
-
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
--- Защита от дубликатов в PlayerGui
-if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("FlonsetKitiGui") then
-    LocalPlayer.PlayerGui.FlonsetKitiGui:Destroy()
-end
+local player = Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "DemoMenu"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- 1. КОРНЕВОЙ КОНТЕЙНЕР
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlonsetKitiGui"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(560, 360)
+main.Position = UDim2.fromScale(0.5, 0.5)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+main.BorderSizePixel = 0
+main.Parent = gui
 
--- 2. ГЛАВНОЕ ОКНО ЧИТА (Оригинальные пропорции Kiti UI 1 в 1)
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 320)
-MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18) -- Глубокий темный фон Kiti
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true -- Плавное перемещение мышкой на ПК
-MainFrame.Parent = ScreenGui
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = main
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
-MainCorner.Parent = MainFrame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -24, 0, 42)
+title.Position = UDim2.fromOffset(12, 8)
+title.BackgroundTransparency = 1
+title.Text = "Visuals"
+title.TextColor3 = Color3.fromRGB(235, 235, 245)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = main
 
--- 3. БОКОВОЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar из исходника Kiti)
-local SideBar = Instance.new("Frame")
-SideBar.Size = UDim2.new(0, 110, 1, 0)
-SideBar.BackgroundColor3 = Color3.fromRGB(22, 22, 26) -- Сайдбар чуть светлее основы
-SideBar.BorderSizePixel = 0
-SideBar.Parent = MainFrame
+local tabs = Instance.new("Frame")
+tabs.Size = UDim2.fromOffset(135, 285)
+tabs.Position = UDim2.fromOffset(12, 58)
+tabs.BackgroundColor3 = Color3.fromRGB(29, 29, 37)
+tabs.BorderSizePixel = 0
+tabs.Parent = main
 
-local SideCorner = Instance.new("UICorner")
-SideCorner.CornerRadius = UDim.new(0, 12)
-SideCorner.Parent = SideBar
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.Padding = UDim.new(0, 6)
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabLayout.Parent = tabs
 
--- Ограничитель скругления правых углов сайдбара
-local SideHide = Instance.new("Frame")
-SideHide.Size = UDim2.new(0, 20, 1, 0)
-SideHide.Position = UDim2.new(1, -20, 0, 0)
-SideHide.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
-SideHide.BorderSizePixel = 0
-SideHide.Parent = SideBar
+local content = Instance.new("ScrollingFrame")
+content.Size = UDim2.new(1, -170, 1, -70)
+content.Position = UDim2.fromOffset(158, 58)
+content.BackgroundColor3 = Color3.fromRGB(27, 27, 34)
+content.BorderSizePixel = 0
+content.ScrollBarThickness = 4
+content.CanvasSize = UDim2.new()
+content.Parent = main
 
--- ЛОГОТИП: Твоя буква "F" вверху панели
-local Logo = Instance.new("TextLabel")
-Logo.Size = UDim2.new(1, 0, 0, 60)
-Logo.Text = "F"
-Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
-Logo.Font = Enum.Font.Accent
-Logo.TextSize = 36
-Logo.BackgroundTransparency = 1
-Logo.Parent = SideBar
+local padding = Instance.new("UIPadding")
+padding.PaddingTop = UDim.new(0, 12)
+padding.PaddingLeft = UDim.new(0, 12)
+padding.PaddingRight = UDim.new(0, 12)
+padding.Parent = content
 
--- Контейнер для списка вкладок с прокруткой
-local ButtonScroll = Instance.new("ScrollingFrame")
-ButtonScroll.Size = UDim2.new(1, 0, 1, -70)
-ButtonScroll.Position = UDim2.new(0, 0, 0, 65)
-ButtonScroll.BackgroundTransparency = 1
-ButtonScroll.BorderSizePixel = 0
-ButtonScroll.ScrollBarThickness = 0
-ButtonScroll.CanvasSize = UDim2.new(0, 0, 0, 250)
-ButtonScroll.Parent = SideBar
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = content
 
-local ScrollLayout = Instance.new("UIListLayout")
-ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ScrollLayout.Padding = UDim.new(0, 4)
-ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ScrollLayout.Parent = ButtonScroll
-
--- 4. ГЛАВНАЯ ПАНЕЛЬ ДЛЯ КОНТЕНТА В СТИЛЕ KITI
-local ContentPanel = Instance.new("Frame")
-ContentPanel.Size = UDim2.new(1, -125, 1, -20)
-ContentPanel.Position = UDim2.new(0, 117, 0, 10)
-ContentPanel.BackgroundTransparency = 1
-ContentPanel.Parent = MainFrame
-
-local tabs = {}
-local tabButtons = {}
-
--- Функция автоматической сборки вкладок Kiti UI
-local function CreateTab(tabName, iconText)
-    local TabContainer = Instance.new("ScrollingFrame")
-    TabContainer.Size = UDim2.new(1, 0, 1, 0)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.BorderSizePixel = 0
-    TabContainer.ScrollBarThickness = 2
-    TabContainer.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 60)
-    TabContainer.Visible = false
-    TabContainer.Parent = ContentPanel
-    
-    -- Фабричная Kiti сетка для квадратных плиток
-    local Grid = Instance.new("UIGridLayout")
-    Grid.CellSize = UDim2.new(0, 105, 0, 95)
-    Grid.CellPadding = UDim2.new(0, 10, 0, 10)
-    Grid.SortOrder = Enum.SortOrder.LayoutOrder
-    Grid.Parent = TabContainer
-    
-    tabs[tabName] = TabContainer
-    
-    local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0.9, 0, 0, 28)
-    TabBtn.Text = "  " .. iconText .. "  " .. tabName
-    TabBtn.Font = Enum.Font.Gotham
-    TabBtn.TextSize = 10
-    TabBtn.TextColor3 = Color3.fromRGB(130, 130, 145)
-    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
-    TabBtn.BackgroundTransparency = 1
-    TabBtn.Parent = ButtonScroll
-    
-    table.insert(tabButtons, TabBtn)
-    
-    -- Логика переключения страниц
-    TabBtn.MouseButton1Click:Connect(function()
-        for _, container in pairs(tabs) do container.Visible = false end
-        for _, btn in ipairs(tabButtons) do btn.TextColor3 = Color3.fromRGB(130, 130, 145) end
-        TabContainer.Visible = true
-        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    end)
-end
-
--- Функция создания оригинальных карточек-плиток Kiti
-local function AddCard(tabName, titleText, descText)
-    local container = tabs[tabName]
-    if not container then return end
-    
-    local Card = Instance.new("TextButton")
-    Card.BackgroundColor3 = Color3.fromRGB(26, 26, 36) -- Матовый темный фон плитки
-    Card.BorderSizePixel = 0
-    Card.Text = ""
-    Card.Parent = container
-    
-    local CardCorner = Instance.new("UICorner")
-    CardCorner.CornerRadius = UDim.new(0, 8)
-    CardCorner.Parent = Card
-    
-    -- Контейнер под мини-картинку внутри плитки
-    local ImgBox = Instance.new("Frame")
-    ImgBox.Size = UDim2.new(1, -12, 0, 50)
-    ImgBox.Position = UDim2.new(0, 6, 0, 6)
-    ImgBox.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
-    ImgBox.BorderSizePixel = 0
-    ImgBox.Parent = Card
-    
-    local ImgCorner = Instance.new("UICorner")
-    ImgCorner.CornerRadius = UDim.new(0, 6)
-    ImgCorner.Parent = ImgBox
-    
-    local InnerText = Instance.new("TextLabel")
-    InnerText.Size = UDim2.new(1, 0, 1, 0)
-    InnerText.Text = "KITI"
-    InnerText.Font = Enum.Font.GothamBold
-    InnerText.TextSize = 14
-    InnerText.TextColor3 = Color3.fromRGB(60, 60, 80)
-    InnerText.BackgroundTransparency = 1
-    InnerText.Parent = ImgBox
-    
-    -- Текст заголовка на плитке
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, -12, 0, 18)
-    Title.Position = UDim2.new(0, 6, 0, 60)
-    Title.Text = titleText
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 10
-    Title.TextColor3 = Color3.fromRGB(220, 220, 230)
-    Title.TextXAlignment = Enum.TextXAlignment.Center
-    Title.BackgroundTransparency = 1
-    Title.Parent = Card
-    
-    -- Текст статуса под заголовком
-    local Status = Instance.new("TextLabel")
-    Status.Size = UDim2.new(1, -12, 0, 12)
-    Status.Position = UDim2.new(0, 6, 0, 76)
-    Status.Text = descText .. ": OFF"
-    Status.Font = Enum.Font.Gotham
-    Status.TextSize = 8
-    Status.TextColor3 = Color3.fromRGB(120, 120, 140)
-    Status.TextXAlignment = Enum.TextXAlignment.Center
-    Status.BackgroundTransparency = 1
-    Status.Parent = Card
-    
-    local enabled = false
-    Card.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        if enabled then
-            Status.Text = descText .. ": ON"
-            Status.TextColor3 = Color3.fromRGB(0, 200, 120) -- Приятный зеленый Kiti-статус
-            Card.BackgroundColor3 = Color3.fromRGB(32, 42, 42)
-        else
-            Status.Text = descText .. ": OFF"
-            Status.TextColor3 = Color3.fromRGB(120, 120, 140)
-            Card.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
-        end
-    end)
-end
-
--- =======================================================
--- СБОРКА РАЗДЕЛОВ И КАРТОЧЕК ДЛЯ ОТРРИСОВКИ
--- =======================================================
-CreateTab("Visuals", "👁")
-CreateTab("Movement", "⚡")
-CreateTab("Target", "🎯")
-CreateTab("Skins", "🎨")
-CreateTab("Config", "⚙")
-
--- Открываем первую вкладку по умолчанию
-if tabs["Visuals"] and tabButtons then
-    tabs["Visuals"].Visible = true
-    tabButtons.TextColor3 = Color3.fromRGB(255, 255, 255)
-end
-
--- Генерируем пустые интерактивные карточки
-AddCard("Visuals", "Neon Chams", "ESP")
-AddCard("Visuals", "Player Box", "ESP")
-
-AddCard("Movement", "Speed Hack", "Speed")
-AddCard("Movement", "Auto-Grab", "Grab")
-
-AddCard("Target", "Shoot Murderer", "Aim")
-AddCard("Target", "Kill Aura", "Aura")
-AddCard("Target", "Fling Targets", "Fling")
-
-AddCard("Skins", "Knife Skin", "Weapon")
-AddCard("Skins", "Gun Skin", "Weapon")
-
--- Панель закрытия в Config
-local UnloadBtn = Instance.new("TextButton")
-UnloadBtn.Size = UDim2.new(0, 105, 0, 32)
-UnloadBtn.Position = UDim2.new(0, 5, 0, 40)
-UnloadBtn.Text = "Close Script"
-UnloadBtn.Font = Enum.Font.GothamBold
-UnloadBtn.TextSize = 11
-UnloadBtn.BackgroundColor3 = Color3.fromRGB(130, 40, 40)
-UnloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-UnloadBtn.Parent = tabs["Config"]
-
-local UnloadCorner = Instance.new("UICorner")
-UnloadCorner.CornerRadius = UDim.new(0, 6)
-UnloadCorner.Parent = UnloadBtn
-
-UnloadBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+\tcontent.CanvasSize = UDim2.fromOffset(0, layout.AbsoluteContentSize.Y + 24)
 end)
 
-print("[FLONSET-KITI] Kiti UI successfully initialized in PlayerGui.")
+local function addTab(name)
+\tlocal button = Instance.new("TextButton")
+\tbutton.Size = UDim2.new(1, -12, 0, 36)
+\tbutton.Position = UDim2.fromOffset(6, 0)
+\tbutton.BackgroundColor3 = Color3.fromRGB(42, 42, 52)
+\tbutton.Text = name
+\tbutton.TextColor3 = Color3.fromRGB(220, 220, 230)
+\tbutton.Font = Enum.Font.Gotham
+\tbutton.TextSize = 14
+\tbutton.BorderSizePixel = 0
+\tbutton.Parent = tabs
+
+\tlocal c = Instance.new("UICorner")
+\tc.CornerRadius = UDim.new(0, 6)
+\tc.Parent = button
+
+\tbutton.MouseButton1Click:Connect(function()
+\t\ttitle.Text = name
+\tend)
+end
+
+local function addToggle(name, defaultValue)
+\tlocal row = Instance.new("TextButton")
+\trow.Size = UDim2.new(1, -8, 0, 42)
+\trow.BackgroundColor3 = Color3.fromRGB(38, 38, 47)
+\trow.Text = ""
+\trow.BorderSizePixel = 0
+\trow.Parent = content
+
+\tlocal label = Instance.new("TextLabel")
+\tlabel.Size = UDim2.new(1, -70, 1, 0)
+\tlabel.Position = UDim2.fromOffset(12, 0)
+\tlabel.BackgroundTransparency = 1
+\tlabel.Text = name
+\tlabel.TextColor3 = Color3.fromRGB(230, 230, 235)
+\tlabel.Font = Enum.Font.Gotham
+\tlabel.TextSize = 14
+\tlabel.TextXAlignment = Enum.TextXAlignment.Left
+\tlabel.Parent = row
+
+\tlocal state = defaultValue == true
+\tlocal indicator = Instance.new("TextLabel")
+\tindicator.Size = UDim2.fromOffset(48, 24)
+\tindicator.Position = UDim2.new(1, -60, 0.5, -12)
+\tindicator.BackgroundColor3 = state
+\t\tand Color3.fromRGB(95, 180, 120)
+\t\tor Color3.fromRGB(75, 75, 85)
+\tindicator.Text = state and "ON" or "OFF"
+\tindicator.TextColor3 = Color3.new(1, 1, 1)
+\tindicator.Font = Enum.Font.GothamBold
+\tindicator.TextSize = 11
+\tindicator.Parent = row
+
+\trow.MouseButton1Click:Connect(function()
+\t\tstate = not state
+\t\tindicator.Text = state and "ON" or "OFF"
+\t\tindicator.BackgroundColor3 = state
+\t\t\tand Color3.fromRGB(95, 180, 120)
+\t\t\tor Color3.fromRGB(75, 75, 85)
+\tend)
+end
+
+local function addSection(name)
+\tlocal label = Instance.new("TextLabel")
+\tlabel.Size = UDim2.new(1, -8, 0, 28)
+\tlabel.BackgroundTransparency = 1
+\tlabel.Text = name
+\tlabel.TextColor3 = Color3.fromRGB(140, 145, 165)
+\tlabel.Font = Enum.Font.GothamBold
+\tlabel.TextSize = 13
+\tlabel.TextXAlignment = Enum.TextXAlignment.Left
+\tlabel.Parent = content
+end
+
+addTab("Combat")
+addTab("Visuals")
+addTab("World")
+addTab("Settings")
+
+addSection("World")
+addToggle("Fullbright", false)
+addToggle("Custom fog", false)
+addToggle("Time changer", false)
+
+addSection("Interface")
+addToggle("Crosshair", false)
+addToggle("Show notifications", true)
+addToggle("Enable animations", true)
