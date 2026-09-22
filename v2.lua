@@ -1,448 +1,236 @@
 -- =======================================================
--- FLONSET PREMIUM MM2 — MOBILE FIX TEMPLATE (F LOGO)
+-- FLONSET PREMIUM MM2 HUB FOR XENO (RAYFIELD UI)
 -- =======================================================
-print("[FLONSET-GUI] Отрисовка ультра-стабильного интерфейса...")
+print("[XENO-FLONSET] Инициализация премиум-интерфейса...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
+local Camera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
--- 1. КОНТЕЙНЕР ИНТЕРФЕЙСА
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlonsetShitaroGui"
-ScreenGui.ResetOnSpawn = false
+-- Переменные для функций чита
+local speedEnabled = false
+local speedValue = 32
+local espEnabled = false
+local grabEnabled = false
+local shootMurdererEnabled = false
 
-local success, _ = pcall(function() ScreenGui.Parent = CoreGui end)
-if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+local activeEsp = {}
 
--- 2. ГЛАВНОЕ ОКНО ЧИТА (Серый квадрат)
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 200) -- Немного уменьшили размер, чтобы всё было компактно
-MainFrame.Position = UDim2.new(0.2, 0, 0.2, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+-- Загружаем оригинальную и стабильную Rayfield UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu'))()
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-
--- 3. БОКОВАЯ СТИЛЬНАЯ ПАНЕЛЬ (Sidebar) — Прописана вручную
-local SideBar = Instance.new("Frame")
-SideBar.Size = UDim2.new(0, 75, 1, 0)
-SideBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
-SideBar.BorderSizePixel = 0
-SideBar.Parent = MainFrame
-
-local SideCorner = Instance.new("UICorner")
-SideCorner.CornerRadius = UDim.new(0, 10)
-SideCorner.Parent = SideBar
-
--- Ограничитель скругления
-local SideHide = Instance.new("Frame")
-SideHide.Size = UDim2.new(0, 15, 1, 0)
-SideHide.Position = UDim2.new(1, -15, 0, 0)
-SideHide.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
-SideHide.BorderSizePixel = 0
-SideHide.Parent = SideBar
-
--- ЛОГОТИП: Буква "F"
-local Logo = Instance.new("TextLabel")
-Logo.Size = UDim2.new(1, 0, 0, 45)
-Logo.Text = "F"
-Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
-Logo.Font = Enum.Font.GothamBold
-Logo.TextSize = 28
-Logo.BackgroundTransparency = 1
-Logo.Parent = SideBar
-
--- 4. ПАНЕЛЬ ДЛЯ КОНТЕНТА (Вкладки)
-local ContentPanel = Instance.new("Frame")
-ContentPanel.Size = UDim2.new(1, -85, 1, -10)
-ContentPanel.Position = UDim2.new(0, 80, 0, 5)
-ContentPanel.BackgroundTransparency = 1
-ContentPanel.Parent = MainFrame
-
-local tabs = {}
-local tabButtons = {}
-
--- ФУНКЦИЯ СОЗДАНИЯ ВКЛАДОК (Без ломающихся ScrollingFrame)
-local function CreateTab(tabName, shortName)
-    local TabContainer = Instance.new("Frame")
-    TabContainer.Size = UDim2.new(1, 0, 1, 0)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.Visible = false
-    TabContainer.Parent = ContentPanel
-    
-    tabs[tabName] = TabContainer
-    
-    -- Кнопки в сайдбаре
-    local btnCount = #tabButtons
-    local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0.85, 0, 0, 24)
-    TabBtn.Position = UDim2.new(0.075, 0, 0, 50 + (btnCount * 28))
-    TabBtn.Text = shortName
-    TabBtn.Font = Enum.Font.GothamBold
-    TabBtn.TextSize = 9
-    TabBtn.TextColor3 = Color3.fromRGB(130, 130, 145)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 46)
-    TabBtn.Parent = SideBar
-    
-    local BCorner = Instance.new("UICorner")
-    BCorner.CornerRadius = UDim.new(0, 5)
-    BCorner.Parent = TabBtn
-    
-    table.insert(tabButtons, TabBtn)
-    
-    TabBtn.MouseButton1Click:Connect(function()
-        for _, container in pairs(tabs) do container.Visible = false end
-        for _, btn in ipairs(tabButtons) do 
-            btn.BackgroundColor3 = Color3.fromRGB(34, 34, 46)
-            btn.TextColor3 = Color3.fromRGB(130, 130, 145) 
-        end
-        TabContainer.Visible = true
-        TabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    end)
-end
-
--- ФУНКЦИЯ ДОБАВЛЕНИЯ ПЛИТОК (Вручную по координатам, без Grid)
-local function AddCard(tabName, titleText, descText, index)
-    local container = tabs[tabName]
-    if not container then return end
-    
-    -- Вычисляем позицию X и Y для плиток вручную (всего 2 плитки на вкладку, встанут рядом)
-    local posX = (index == 1) and 5 or 120
-    
-    local Card = Instance.new("TextButton")
-    Card.Size = UDim2.new(0, 105, 0, 95)
-    Card.Position = UDim2.new(0, posX, 0, 40)
-    Card.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
-    Card.BorderSizePixel = 0
-    Card.Text = ""
-    Card.Parent = container
-    
-    local CardCorner = Instance.new("UICorner")
-    CardCorner.CornerRadius = UDim.new(0, 8)
-    CardCorner.Parent = Card
-    
-    -- Мини-картинка внутри плитки
-    local ImgBox = Instance.new("Frame")
-    ImgBox.Size = UDim2.new(1, -12, 0, 50)
-    ImgBox.Position = UDim2.new(0, 6, 0, 6)
-    ImgBox.BackgroundColor3 = Color3.fromRGB(38, 38, 52)
-    ImgBox.BorderSizePixel = 0
-    ImgBox.Parent = Card
-    
-    local ImgCorner = Instance.new("UICorner")
-    ImgCorner.CornerRadius = UDim.new(0, 6)
-    ImgCorner.Parent = ImgBox
-    
-    local InnerText = Instance.new("TextLabel")
-    InnerText.Size = UDim2.new(1, 0, 1, 0)
-    InnerText.Text = "FLON"
-    InnerText.Font = Enum.Font.GothamBold
-    InnerText.TextSize = 14
-    InnerText.TextColor3 = Color3.fromRGB(65, 65, 85)
-    InnerText.BackgroundTransparency = 1
-    InnerText.Parent = ImgBox
-    
-    -- Имя функции
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, -12, 0, 18)
-    Title.Position = UDim2.new(0, 6, 0, 60)
-    Title.Text = titleText
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 10
-    Title.TextColor3 = Color3.fromRGB(220, 220, 230)
-    Title.TextXAlignment = Enum.TextXAlignment.Center
-    Title.BackgroundTransparency = 1
-    Title.Parent = Card
-    
-    -- Статус
-    local Status = Instance.new("TextLabel")
-    Status.Size = UDim2.new(1, -12, 0, 12)
-    Status.Position = UDim2.new(0, 6, 0, 76)
-    Status.Text = descText .. ": OFF"
-    Status.Font = Enum.Font.Gotham
-    Status.TextSize = 8
-    Status.TextColor3 = Color3.fromRGB(120, 120, 140)
-    Status.TextXAlignment = Enum.TextXAlignment.Center
-    Status.BackgroundTransparency = 1
-    Status.Parent = Card
-    
-    local enabled = false
-    Card.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        if enabled then
-            Status.Text = descText .. ": ON"
-            Status.TextColor3 = Color3.fromRGB(0, 200, 120)
-            Card.BackgroundColor3 = Color3.fromRGB(34, 46, 42)
-        else
-            Status.Text = descText .. ": OFF"
-            Status.TextColor3 = Color3.fromRGB(120, 120, 140)
-            Card.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
-        end
-    end)
-end
+-- Создаем главное окно чита
+local Window = Rayfield:CreateWindow({
+   Name = "FLONSET PREMIUM V2 (MM2)",
+   LoadingTitle = "Flonset Hub Loading...",
+   LoadingSubtitle = "by abobka694-collab",
+   Theme = "DarkTheme", -- Красивая темная тема
+   DisableRayfieldPrompts = true,
+   DisableBuildWarnings = true,
+   ConfigurationSaving = { Enabled = false }
+})
 
 -- =======================================================
--- ГЕНЕРАЦИЯ ВКЛАДОК (Ультра-короткие имена для кнопок)
+-- ВКЛАДКА 1: VISUALS (Профессиональное 2D-Box ESP)
 -- =======================================================
-CreateTab("Visuals", "VISUAL")
-CreateTab("Movement", "MOVE")
-CreateTab("Target", "TARGET")
-CreateTab("Config", "CONFIG")
+local VisualsTab = Window:CreateTab("Visuals", 4483362458) -- Иконка глаза
 
--- Открытие первой вкладки
-if tabs["Visuals"] and tabButtons[1] then
-    tabs["Visuals"].Visible = true
-    tabButtons[1].BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    tabButtons[1].TextColor3 = Color3.fromRGB(255, 255, 255)
-end
-
--- Добавление плиток строго по индексам 1 и 2
-AddCard("Visuals", "Neon Chams", "ESP", 1)
-AddCard("Visuals", "Player Box", "ESP", 2)
-
-AddCard("Movement", "Speed Hack", "Speed", 1)
-AddCard("Movement", "Auto-Grab", "Grab", 2)
-
-AddCard("Target", "Kill Aura", "Aura", 1)
-AddCard("Target", "Fling Player", "Fling", 2)
-
--- Кнопка закрытия в разделе CONFIG
-local UnloadBtn = Instance.new("TextButton")
-UnloadBtn.Size = UDim2.new(0, 105, 0, 32)
-UnloadBtn.Position = UDim2.new(0, 5, 0, 40)
-UnloadBtn.Text = "Close Script"
-UnloadBtn.Font = Enum.Font.GothamBold
-UnloadBtn.TextSize = 11
-UnloadBtn.BackgroundColor3 = Color3.fromRGB(130, 40, 40)
-UnloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-UnloadBtn.Parent = tabs["Config"]
-
-local UnloadCorner = Instance.new("UICorner")
-UnloadCorner.CornerRadius = UDim.new(0, 6)
-UnloadCorner.Parent = UnloadBtn
-
-UnloadBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
--- =======================================================
--- ПЛАВАЮЩАЯ КРУГЛАЯ КНОПКА "F"
--- =======================================================
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 42, 0, 42)
-ToggleButton.Position = UDim2.new(0.02, 0, 0.15, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.Text = "F"
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.TextSize = 18
-ToggleButton.Active = true
-ToggleButton.Draggable = true
-ToggleButton.Parent = ScreenGui
-
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(1, 0)
-ButtonCorner.Parent = ToggleButton
-
-ToggleButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-    if MainFrame.Visible then
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    else
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 160, 100)
+local function removeEsp(player)
+    if activeEsp[player] then
+        pcall(function()
+            activeEsp[player].Box.Visible = false
+            activeEsp[player].Box:Remove()
+            activeEsp[player].Text.Visible = false
+            activeEsp[player].Text:Remove()
+        end)
+        activeEsp[player] = nil
     end
-end)
+end
 
-print("[FLONSET-GUI] Код полностью адаптирован под рендеринг Arceus!")
-
- = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
- -- =======================================================
--- ПРОФЕССИОНАЛЬНОЕ 2D-BOX ESP (ВХ КВАДРАТЫ С ФИКСОМ ВЫКЛЮЧЕНИЯ)
--- =======================================================
-print("[FLONSET-BOX] Активация сквозных 2D-боксов...")
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-
-getgenv().ProBoxEspActive = true
-local activeBoxes = {}
-
--- Создаем скрытый системный контейнер для рамок в CoreGui
-local EspUi = Instance.new("ScreenGui")
-EspUi.Name = "FlonsetProBoxEsp"
-EspUi.ResetOnSpawn = false
-local success, _ = pcall(function() EspUi.Parent = CoreGui end)
-if not success then EspUi.Parent = LocalPlayer:WaitForChild("PlayerGui") end
-
--- Функция создания профессионального бокса
-local function applyProBox(player)
+local function createEsp(player)
     if player == LocalPlayer then return end
     
-    local function onCharAdded(char)
-        task.wait(0.5)
-        if not getgenv().ProBoxEspActive then return end
-        
-        local hrp = char:WaitForChild("HumanoidRootPart", 5)
-        if not head then return end
-        
-        -- Если старый бокс остался, сносим его
-        if activeBoxes[player] then
-            pcall(function() activeBoxes[player]:Destroy() end)
+    local box = Drawing.new("Square")
+    box.Thickness = 1.8
+    box.Filled = false
+    box.Transparency = 1
+    
+    local text = Drawing.new("Text")
+    text.Size = 13
+    text.Center = true
+    text.Outline = true
+    text.Transparency = 1
+    
+    activeEsp[player] = {Box = box, Text = text}
+    
+    local connection
+    connection = game:GetService("RunService").RenderStepped:Connect(function()
+        if not espEnabled or not player.Parent or not player.Character then
+            removeEsp(player)
+            if connection then connection:Disconnect() end
+            return
         end
         
-        -- Создаем BillboardGui, который будет намертво привязан к телу и виден сквозь стены
-        local bGui = Instance.new("BillboardGui")
-        bGui.Name = "ProBox"
-        bGui.Size = UDim2.new(0, 45, 0, 60) -- Пропорции рамки под тело человека
-        bGui.AlwaysOnTop = true -- Пробивает стены на мобилках!
-        bGui.Adornee = hrp
-        bGui.Parent = EspUi
-        activeBoxes[player] = bGui
+        local char = player.Character
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
         
-        -- Рисуем неоновую рамку через UIStroke
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.BackgroundTransparency = 1
-        frame.Parent = bGui
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Thickness = 1.5
-        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        stroke.LineJoinMode = Enum.LineJoinMode.Miter
-        stroke.Parent = frame
-        
-        -- Маленький текст с ником сверху рамки
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 15)
-        label.Position = UDim2.new(0, 0, 0, -18)
-        label.BackgroundTransparency = 1
-        label.Font = Enum.Font.GothamBold
-        label.TextSize = 9
-        label.TextStrokeTransparency = 0.3
-        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        label.Parent = bGui
-        
-        -- Фоновый цикл отслеживания ролей и позиций
-        task.spawn(function()
-            while char and char.Parent and getgenv().ProBoxEspActive and hrp.Parent do
+        if hrp and hum and hum.Health > 0 then
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            
+            if onScreen then
+                local scale = 1 / (pos.Z * math.tan(math.rad(Camera.FieldOfView / 2))) * 1000
+                local boxX = scale * 0.5
+                local boxY = scale * 0.7
+                
                 local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
                 local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
                 
-                -- Подбираем цвет рамки и текст под роль игрока
+                local color = Color3.fromRGB(50, 255, 100)
+                local roleText = player.DisplayName
+                
                 if knife then
-                    stroke.Color = Color3.fromRGB(255, 50, 50) -- Убийца (Красный)
-                    label.Text = "[MURDERER] " .. player.DisplayName
-                    label.TextColor3 = Color3.fromRGB(255, 50, 50)
+                    color = Color3.fromRGB(255, 50, 50)
+                    roleText = "[MURDERER] " .. player.DisplayName
                 elseif gun then
-                    stroke.Color = Color3.fromRGB(50, 150, 255) -- Шериф (Синий)
-                    label.Text = "[SHERIFF] " .. player.DisplayName
-                    label.TextColor3 = Color3.fromRGB(50, 150, 255)
-                else
-                    stroke.Color = Color3.fromRGB(50, 255, 100) -- Невинный (Зеленый)
-                    label.Text = player.DisplayName
-                    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    color = Color3.fromRGB(50, 150, 255)
+                    roleText = "[SHERIFF] " .. player.DisplayName
                 end
-                task.wait(0.5)
+                
+                box.Size = Vector2.new(boxX, boxY)
+                box.Position = Vector2.new(pos.X - boxX/2, pos.Y - boxY/2)
+                box.Color = color
+                box.Visible = true
+                
+                text.Position = Vector2.new(pos.X, pos.Y - boxY/2 - 15)
+                text.Text = roleText
+                text.Color = color
+                text.Visible = true
+                return
             end
-            if bGui then bGui:Destroy() end
-            activeBoxes[player] = nil
-        end)
-    end
-    
-    if player.Character then task.spawn(onCharAdded, player.Character) end
-    player.CharacterAdded:Connect(onCharAdded)
+        end
+        box.Visible = false
+        text.Visible = false
+    end)
 end
 
--- Включаем для всех на сервере
-for _, p in ipairs(Players:GetPlayers()) do applyProBox(p) end
-local joinConnection = Players.PlayerAdded:Connect(applyProBox)
+VisualsTab:CreateToggle({
+   Name = "2D Box ESP (Through Walls)",
+   CurrentValue = false,
+   Flag = "BoxEspToggle",
+   Callback = function(Value)
+      espEnabled = Value
+      if Value then
+          for _, p in ipairs(Players:GetPlayers()) do createEsp(p) end
+      else
+          for p, _ in pairs(activeEsp) do removeEsp(p) end
+          table.clear(activeEsp)
+      end
+   end,
+})
 
--- ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ТОТАЛЬНОГО ВЫКЛЮЧЕНИЯ ВХ
-getgenv().DisableProBoxEsp = function()
-    getgenv().ProBoxEspActive = false
-    
-    -- Отключаем отслеживание новых игроков
-    if joinConnection then 
-        joinConnection:Disconnect() 
-    end
-    
-    -- Принудительно зачищаем абсолютно все боксы из памяти и с экрана
-    for player, box in pairs(activeBoxes) do
-        pcall(function() 
-            if box then box:Destroy() end 
+Players.PlayerAdded:Connect(function(p)
+    if espEnabled then createEsp(p) end
+end)
+
+-- =======================================================
+-- ВКЛАДКА 2: MOVEMENT (Скорость и Автоподбор)
+-- =======================================================
+local MovementTab = Window:CreateTab("Movement", 4483362618) -- Иконка молнии
+
+MovementTab:CreateToggle({
+   Name = "Enable Speed Hack",
+   CurrentValue = false,
+   Flag = "SpeedToggle",
+   Callback = function(Value)
+      speedEnabled = Value
+   end,
+})
+
+MovementTab:CreateSlider({
+   Name = "Speed Value",
+   Min = 16,
+   Max = 100,
+   DefaultValue = 32,
+   Color = Color3.fromRGB(0, 150, 100),
+   Increment = 1,
+   ValueName = "Studs",
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+      speedValue = Value
+   end,
+})
+
+task.spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = speedEnabled and speedValue or 16 end
         end)
     end
-    table.clear(activeBoxes)
-    
-    -- Жестко сносим саму папку UI
-    pcall(function() EspUi:Destroy() end)
-    print("[FLONSET-BOX] Все боксы принудительно стёрты с экрана.")
-end
+end)
 
-print("[FLONSET-BOX] Новые 2D-боксы успешно запущены!")
+MovementTab:CreateToggle({
+   Name = "Auto-Grab Dropped Gun",
+   CurrentValue = false,
+   Flag = "GrabToggle",
+   Callback = function(Value)
+      grabEnabled = Value
+   end,
+})
+
+task.spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            if grabEnabled then
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local gunDrop = workspace:FindFirstChild("GunDrop")
+                if gunDrop and hrp then
+                    local distance = (hrp.Position - gunDrop.Position).Magnitude
+                    local duration = distance / 45
+                    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+                    local tween = TweenService:Create(gunDrop, tweenInfo, {CFrame = hrp.CFrame})
+                    tween:Play()
+                end
+            end
+        end)
+    end
+end)
 
 -- =======================================================
--- АВТО-ВЫСТРЕЛ В УБИЙЦУ ДЛЯ ШЕРИФА/ГЕРОЯ (SHOOT MURDERER)
+-- ВКЛАДКА 3: TARGET (Аимбот / Авто-выстрел)
 -- =======================================================
-print("[FLONSET-AIM] Скрипт мгновенного авто-выстрела запущен...")
+local TargetTab = Window:CreateTab("Target", 4483364237) -- Иконка мишени
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-getgenv().ShootMurdererActive = true
-
--- Функция для поиска маньяка по ножу в руках или в рюкзаке
 local function findMurderer()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local knife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
             local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            
-            if knife and hum and hum.Health > 0 then
-                return player
-            end
+            if knife and hum and hum.Health > 0 then return player end
         end
     end
     return nil
 end
 
--- Основной цикл, который караулит маньяка
 task.spawn(function()
     while task.wait(0.1) do
-        -- Если мы принудительно отключили функцию, выходим из цикла
-        if not getgenv().ShootMurdererActive then break end
-        
         pcall(function()
-            local char = LocalPlayer.Character
-            -- Проверяем, держим ли мы пистолет прямо сейчас
-            local gun = char and char:FindFirstChild("Gun")
-            
-            if gun and gun:FindFirstChild("Shoot") and gun.Shoot:IsA("RemoteEvent") then
-                local murderer = findMurderer()
-                
-                if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
-                    local targetHrp = murderer.Character.HumanoidRootPart
-                    local myHrp = char:FindFirstChild("HumanoidRootPart")
-                    
-                    if myHrp and targetHrp then
-                        -- Триггерим выстрел напрямую через сетевой ивент оружия (CFrame начала и CFrame цели)
-                        local startCFrame = myHrp.CFrame
-                        local aimCFrame = CFrame.new(targetHrp.Position)
-                        
-                        print("[FLONSET-AIM] Убийца обнаружен! Производим моментальный шот...")
-                        gun.Shoot:FireServer(startCFrame, aimCFrame)
-                        
-                        -- Кулдаун в 1 секунду, чтобы сервер не заподозрил спам-атаку пакетами
-                        task.wait(1)
+            if shootMurdererEnabled then
+                local char = LocalPlayer.Character
+                local gun = char and char:FindFirstChild("Gun")
+                if gun and gun:FindFirstChild("Shoot") and gun.Shoot:IsA("RemoteEvent") then
+                    local m = findMurderer()
+                    if m and m.Character and m.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetHrp = m.Character.HumanoidRootPart
+                        local myHrp = char:FindFirstChild("HumanoidRootPart")
+                        if myHrp and targetHrp then
+                            gun.Shoot:FireServer(myHrp.CFrame, CFrame.new(targetHrp.Position))
+                            task.wait(1)
+                        end
                     end
                 end
             end
@@ -450,8 +238,34 @@ task.spawn(function()
     end
 end)
 
--- ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ВЫКЛЮЧЕНИЯ (Если нужно выключить чит)
-getgenv().DisableShootMurderer = function()
-    getgenv().ShootMurdererActive = false
-    print("[FLONSET-AIM] Авто-выстрел полностью отключен.")
-end
+TargetTab:CreateToggle({
+   Name = "Shoot Murderer (Auto-Aim)",
+   CurrentValue = false,
+   Flag = "ShootToggle",
+   Callback = function(Value)
+      shootMurdererEnabled = Value
+   end,
+})
+
+-- =======================================================
+-- ВКЛАДКА 4: CONFIG (Управление скриптом)
+-- =======================================================
+local ConfigTab = Window:CreateTab("Config", 4483362748) -- Иконка шестеренки
+
+ConfigTab:CreateButton({
+   Name = "Close / Unload Script",
+   Callback = function()
+      speedEnabled = false espEnabled = false grabEnabled = false shootMurdererEnabled = false
+      for p, _ in pairs(activeEsp) do removeEsp(p) end
+      table.clear(activeEsp)
+      Rayfield:Destroy()
+   end,
+})
+
+Rayfield:Notify({
+   Title = "Flonset Hub Loaded!",
+   Content = "Enjoy professional features on Xeno.",
+   Duration = 5,
+   Image = 4483362458,
+   Actions = { Ignore = { Name = "Okay!", Callback = function() end } },
+})
