@@ -1,165 +1,250 @@
-print("[FLONSET-MAIN] Запуск обычного чит-меню...")
+print("[FLONSET-KITI] Rendering pure Kiti UI template...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 
--- Удаляем старое меню, если оно уже висело на экране, чтобы кнопки не дублировались
-if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("FlonsetMainGui") then
-    LocalPlayer.PlayerGui.FlonsetMainGui:Destroy()
+-- Защита от дубликатов в PlayerGui
+if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("FlonsetKitiGui") then
+    LocalPlayer.PlayerGui.FlonsetKitiGui:Destroy()
 end
 
--- Создаем графический контейнер
+-- 1. КОРНЕВОЙ КОНТЕЙНЕР
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlonsetMainGui"
+ScreenGui.Name = "FlonsetKitiGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 1. ГЛАВНОЕ ОКНО ЧИТА (Обычный серый квадрат)
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 180, 0, 140)
-Frame.Position = UDim2.new(0.05, 0, 0.3, 0) -- Появится аккуратно в левой части экрана
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-Frame.BorderSizePixel = 2
-Frame.BorderColor3 = Color3.fromRGB(50, 50, 60)
-Frame.Active = true
-Frame.Draggable = true -- Меню можно спокойно перетаскивать мышкой или пальцем
-Frame.Parent = ScreenGui
+-- 2. ГЛАВНОЕ ОКНО ЧИТА (Оригинальные пропорции Kiti UI 1 в 1)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 480, 0, 320)
+MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18) -- Глубокий темный фон Kiti
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Плавное перемещение мышкой на ПК
+MainFrame.Parent = ScreenGui
 
--- Заголовок меню
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "FLONSET MM2"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.Parent = Frame
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
 
--- 2. КНОПКА 1: WALKSPEED (СКОРОСТЬ)
-local SpeedButton = Instance.new("TextButton")
-SpeedButton.Size = UDim2.new(0.9, 0, 0, 35)
-SpeedButton.Position = UDim2.new(0.05, 0, 0, 45)
-SpeedButton.Text = "WalkSpeed: OFF"
-SpeedButton.Font = Enum.Font.GothamBold
-SpeedButton.TextSize = 11
-SpeedButton.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-SpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedButton.Parent = Frame
+-- 3. БОКОВОЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar из исходника Kiti)
+local SideBar = Instance.new("Frame")
+SideBar.Size = UDim2.new(0, 110, 1, 0)
+SideBar.BackgroundColor3 = Color3.fromRGB(22, 22, 26) -- Сайдбар чуть светлее основы
+SideBar.BorderSizePixel = 0
+SideBar.Parent = MainFrame
 
-local speedEnabled = false
-SpeedButton.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    if speedEnabled then
-        SpeedButton.Text = "WalkSpeed: ON (32)"
-        SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100) -- Зеленый при включении
-    else
-        SpeedButton.Text = "WalkSpeed: OFF"
-        SpeedButton.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-    end
-end)
+local SideCorner = Instance.new("UICorner")
+SideCorner.CornerRadius = UDim.new(0, 12)
+SideCorner.Parent = SideBar
 
--- Фоновый цикл удержания скорости (WalkSpeed)
-RunService.Heartbeat:Connect(function()
-    pcall(function()
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed = speedEnabled and 32 or 16
-        end
+-- Ограничитель скругления правых углов сайдбара
+local SideHide = Instance.new("Frame")
+SideHide.Size = UDim2.new(0, 20, 1, 0)
+SideHide.Position = UDim2.new(1, -20, 0, 0)
+SideHide.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideHide.BorderSizePixel = 0
+SideHide.Parent = SideBar
+
+-- ЛОГОТИП: Твоя буква "F" вверху панели
+local Logo = Instance.new("TextLabel")
+Logo.Size = UDim2.new(1, 0, 0, 60)
+Logo.Text = "F"
+Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
+Logo.Font = Enum.Font.Accent
+Logo.TextSize = 36
+Logo.BackgroundTransparency = 1
+Logo.Parent = SideBar
+
+-- Контейнер для списка вкладок с прокруткой
+local ButtonScroll = Instance.new("ScrollingFrame")
+ButtonScroll.Size = UDim2.new(1, 0, 1, -70)
+ButtonScroll.Position = UDim2.new(0, 0, 0, 65)
+ButtonScroll.BackgroundTransparency = 1
+ButtonScroll.BorderSizePixel = 0
+ButtonScroll.ScrollBarThickness = 0
+ButtonScroll.CanvasSize = UDim2.new(0, 0, 0, 250)
+ButtonScroll.Parent = SideBar
+
+local ScrollLayout = Instance.new("UIListLayout")
+ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ScrollLayout.Padding = UDim.new(0, 4)
+ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ScrollLayout.Parent = ButtonScroll
+
+-- 4. ГЛАВНАЯ ПАНЕЛЬ ДЛЯ КОНТЕНТА В СТИЛЕ KITI
+local ContentPanel = Instance.new("Frame")
+ContentPanel.Size = UDim2.new(1, -125, 1, -20)
+ContentPanel.Position = UDim2.new(0, 117, 0, 10)
+ContentPanel.BackgroundTransparency = 1
+ContentPanel.Parent = MainFrame
+
+local tabs = {}
+local tabButtons = {}
+
+-- Функция автоматической сборки вкладок Kiti UI
+local function CreateTab(tabName, iconText)
+    local TabContainer = Instance.new("ScrollingFrame")
+    TabContainer.Size = UDim2.new(1, 0, 1, 0)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.BorderSizePixel = 0
+    TabContainer.ScrollBarThickness = 2
+    TabContainer.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 60)
+    TabContainer.Visible = false
+    TabContainer.Parent = ContentPanel
+    
+    -- Фабричная Kiti сетка для квадратных плиток
+    local Grid = Instance.new("UIGridLayout")
+    Grid.CellSize = UDim2.new(0, 105, 0, 95)
+    Grid.CellPadding = UDim2.new(0, 10, 0, 10)
+    Grid.SortOrder = Enum.SortOrder.LayoutOrder
+    Grid.Parent = TabContainer
+    
+    tabs[tabName] = TabContainer
+    
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(0.9, 0, 0, 28)
+    TabBtn.Text = "  " .. iconText .. "  " .. tabName
+    TabBtn.Font = Enum.Font.Gotham
+    TabBtn.TextSize = 10
+    TabBtn.TextColor3 = Color3.fromRGB(130, 130, 145)
+    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
+    TabBtn.BackgroundTransparency = 1
+    TabBtn.Parent = ButtonScroll
+    
+    table.insert(tabButtons, TabBtn)
+    
+    -- Логика переключения страниц
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, container in pairs(tabs) do container.Visible = false end
+        for _, btn in ipairs(tabButtons) do btn.TextColor3 = Color3.fromRGB(130, 130, 145) end
+        TabContainer.Visible = true
+        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     end)
-end)
-
--- 3. КНОПКА 2: ROLE ESP (ВХ СКВОЗЬ СТЕНЫ)
-local EspButton = Instance.new("TextButton")
-EspButton.Size = UDim2.new(0.9, 0, 0, 35)
-EspButton.Position = UDim2.new(0.05, 0, 0, 90)
-EspButton.Text = "Role ESP: OFF"
-EspButton.Font = Enum.Font.GothamBold
-EspButton.TextSize = 11
-EspButton.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-EspButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-EspButton.Parent = Frame
-
-local espEnabled = false
-local currentActiveGuis = {}
-
--- Функция создания меток над головами игроков, видимых сквозь стены
-local function applyMobileESP(player)
-    if player == LocalPlayer then return end
-    
-    local function onCharAdded(char)
-        task.wait(0.5)
-        if not espEnabled then return end
-        
-        local head = char:WaitForChild("Head", 5)
-        if not head then return end
-        
-        if currentActiveGuis[player] then
-            pcall(function() currentActiveGuis[player]:Destroy() end)
-        end
-        
-        -- Вшиваем текстовый маркер прямо в голову персонажа в Workspace — это работает везде
-        local bGui = Instance.new("BillboardGui")
-        bGui.Name = "Flonset_WallHack"
-        bGui.Size = UDim2.new(0, 120, 0, 30)
-        bGui.AlwaysOnTop = true -- Самая важная строчка: делает текст видимым сквозь любые стены
-        bGui.ExtentsOffset = Vector3.new(0, 3, 0)
-        bGui.Adornee = head
-        bGui.Parent = head
-        
-        currentActiveGuis[player] = bGui
-        
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 11
-        textLabel.TextStrokeTransparency = 0.2 -- Черная обводка текста, чтобы было видно на любом фоне
-        textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        textLabel.Parent = bGui
-        
-        task.spawn(function()
-            while char and char.Parent and espEnabled and head.Parent do
-                local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
-                local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
-                
-                if knife then
-                    textLabel.Text = "[MURDERER] " .. player.DisplayName
-                    textLabel.TextColor3 = Color3.fromRGB(255, 50, 50) -- Красный Убийца
-                elseif gun then
-                    textLabel.Text = "[SHERIFF] " .. player.DisplayName
-                    textLabel.TextColor3 = Color3.fromRGB(50, 150, 255) -- Синий Шериф
-                else
-                    textLabel.Text = "[INNOCENT] " .. player.DisplayName
-                    textLabel.TextColor3 = Color3.fromRGB(50, 255, 100) -- Зеленый Мирный
-                end
-                task.wait(1)
-            end
-            if bGui then bGui:Destroy() end
-            currentActiveGuis[player] = nil
-        end)
-    end
-    
-    if player.Character then task.spawn(onCharAdded, player.Character) end
-    player.CharacterAdded:Connect(onCharAdded)
 end
 
-EspButton.MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    if espEnabled then
-        EspButton.Text = "Role ESP: ON"
-        EspButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-        for _, p in ipairs(Players:GetPlayers()) do applyMobileESP(p) end
-    else
-        EspButton.Text = "Role ESP: OFF"
-        EspButton.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-        for _, bg in pairs(currentActiveGuis) do pcall(function() bg:Destroy() end) end
-        table.clear(currentActiveGuis)
-    end
+-- Функция создания оригинальных карточек-плиток Kiti
+local function AddCard(tabName, titleText, descText)
+    local container = tabs[tabName]
+    if not container then return end
+    
+    local Card = Instance.new("TextButton")
+    Card.BackgroundColor3 = Color3.fromRGB(26, 26, 36) -- Матовый темный фон плитки
+    Card.BorderSizePixel = 0
+    Card.Text = ""
+    Card.Parent = container
+    
+    local CardCorner = Instance.new("UICorner")
+    CardCorner.CornerRadius = UDim.new(0, 8)
+    CardCorner.Parent = Card
+    
+    -- Контейнер под мини-картинку внутри плитки
+    local ImgBox = Instance.new("Frame")
+    ImgBox.Size = UDim2.new(1, -12, 0, 50)
+    ImgBox.Position = UDim2.new(0, 6, 0, 6)
+    ImgBox.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+    ImgBox.BorderSizePixel = 0
+    ImgBox.Parent = Card
+    
+    local ImgCorner = Instance.new("UICorner")
+    ImgCorner.CornerRadius = UDim.new(0, 6)
+    ImgCorner.Parent = ImgBox
+    
+    local InnerText = Instance.new("TextLabel")
+    InnerText.Size = UDim2.new(1, 0, 1, 0)
+    InnerText.Text = "KITI"
+    InnerText.Font = Enum.Font.GothamBold
+    InnerText.TextSize = 14
+    InnerText.TextColor3 = Color3.fromRGB(60, 60, 80)
+    InnerText.BackgroundTransparency = 1
+    InnerText.Parent = ImgBox
+    
+    -- Текст заголовка на плитке
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -12, 0, 18)
+    Title.Position = UDim2.new(0, 6, 0, 60)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 10
+    Title.TextColor3 = Color3.fromRGB(220, 220, 230)
+    Title.TextXAlignment = Enum.TextXAlignment.Center
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+    
+    -- Текст статуса под заголовком
+    local Status = Instance.new("TextLabel")
+    Status.Size = UDim2.new(1, -12, 0, 12)
+    Status.Position = UDim2.new(0, 6, 0, 76)
+    Status.Text = descText .. ": OFF"
+    Status.Font = Enum.Font.Gotham
+    Status.TextSize = 8
+    Status.TextColor3 = Color3.fromRGB(120, 120, 140)
+    Status.TextXAlignment = Enum.TextXAlignment.Center
+    Status.BackgroundTransparency = 1
+    Status.Parent = Card
+    
+    local enabled = false
+    Card.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        if enabled then
+            Status.Text = descText .. ": ON"
+            Status.TextColor3 = Color3.fromRGB(0, 200, 120) -- Приятный зеленый Kiti-статус
+            Card.BackgroundColor3 = Color3.fromRGB(32, 42, 42)
+        else
+            Status.Text = descText .. ": OFF"
+            Status.TextColor3 = Color3.fromRGB(120, 120, 140)
+            Card.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
+        end
+    end)
+end
+
+-- =======================================================
+-- СБОРКА РАЗДЕЛОВ И КАРТОЧЕК ДЛЯ ОТРРИСОВКИ
+-- =======================================================
+CreateTab("Visuals", "👁")
+CreateTab("Movement", "⚡")
+CreateTab("Target", "🎯")
+CreateTab("Skins", "🎨")
+CreateTab("Config", "⚙")
+
+-- Открываем первую вкладку по умолчанию
+if tabs["Visuals"] and tabButtons then
+    tabs["Visuals"].Visible = true
+    tabButtons.TextColor3 = Color3.fromRGB(255, 255, 255)
+end
+
+-- Генерируем пустые интерактивные карточки
+AddCard("Visuals", "Neon Chams", "ESP")
+AddCard("Visuals", "Player Box", "ESP")
+
+AddCard("Movement", "Speed Hack", "Speed")
+AddCard("Movement", "Auto-Grab", "Grab")
+
+AddCard("Target", "Shoot Murderer", "Aim")
+AddCard("Target", "Kill Aura", "Aura")
+AddCard("Target", "Fling Targets", "Fling")
+
+AddCard("Skins", "Knife Skin", "Weapon")
+AddCard("Skins", "Gun Skin", "Weapon")
+
+-- Панель закрытия в Config
+local UnloadBtn = Instance.new("TextButton")
+UnloadBtn.Size = UDim2.new(0, 105, 0, 32)
+UnloadBtn.Position = UDim2.new(0, 5, 0, 40)
+UnloadBtn.Text = "Close Script"
+UnloadBtn.Font = Enum.Font.GothamBold
+UnloadBtn.TextSize = 11
+UnloadBtn.BackgroundColor3 = Color3.fromRGB(130, 40, 40)
+UnloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnloadBtn.Parent = tabs["Config"]
+
+local UnloadCorner = Instance.new("UICorner")
+UnloadCorner.CornerRadius = UDim.new(0, 6)
+UnloadCorner.Parent = UnloadBtn
+
+UnloadBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
--- Отслеживание новых заходящих на сервер игроков
-Players.PlayerAdded:Connect(function(p)
-    if espEnabled then applyMobileESP(p) end
-end)
+print("[FLONSET-KITI] Kiti UI successfully initialized in PlayerGui.")
