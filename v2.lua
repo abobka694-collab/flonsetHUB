@@ -1279,6 +1279,7 @@ function SilentAim:SetPredictionScale(value) Settings.PredictionScale = value en
 function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
 
 return SilentAim
+
 -- ═══════════════════════════════════════════════════════════════
 -- FLONSET HUB - INVISIBLE (Xeno Safe)
 -- Только Transparency, без хуков и скрытых свойств
