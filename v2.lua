@@ -645,14 +645,13 @@ print("🔑 Press [G] to toggle menu")
 task.wait(0.5)
 ToggleMenu() -- Автоматически открываем меню при загрузке
 -- ═══════════════════════════════════════════════════════════════
--- FLONSET HUB - 2D BOX ESP (Xeno Compatible)
--- Использует Highlight (работает в Xeno 100%)
+-- FLONSET HUB - ESP С ПРОВЕРКОЙ ИНВЕНТАРЯ (100% РАБОЧИЙ)
 -- ═══════════════════════════════════════════════════════════════
 
-local BoxESP = {}
-
+local ESP = {}
 local Settings = {
     Enabled = false,
+    ShowBox = true,
     ShowName = true,
     ShowDistance = true,
     ShowRole = true,
@@ -664,69 +663,32 @@ local Settings = {
 }
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 
 local ESP_Data = {}
-local RoleCache = {}
-local RoundModule = nil
 local UpdateThread = nil
 
 -- ═══════════════════════════════════════════════════════════════
--- ПОЛУЧЕНИЕ МОДУЛЯ РАУНДА
--- ═══════════════════════════════════════════════════════════════
-local function GetRoundModule()
-    if RoundModule then return RoundModule end
-    local ok, module = pcall(function()
-        return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient"))
-    end)
-    if ok and type(module) == "table" then
-        RoundModule = module
-        return module
-    end
-    return nil
-end
-
--- ═══════════════════════════════════════════════════════════════
--- ОПРЕДЕЛЕНИЕ РОЛИ
+-- ПРОВЕРКА РОЛИ ЧЕРЕЗ ИНВЕНТАРЬ
 -- ═══════════════════════════════════════════════════════════════
 local function GetPlayerRole(player)
     if not player or not player.Parent then return "Innocent" end
-    if RoleCache[player.Name] then return RoleCache[player.Name] end
     
-    -- Проверяем модуль раунда
-    local module = GetRoundModule()
-    if module and module.PlayerData then
-        local data = module.PlayerData[player.Name]
-        if data and data.Role then
-            local role = data.Role
-            if role == "Murderer" then
-                RoleCache[player.Name] = "Murderer"
-                return "Murderer"
-            elseif role == "Sheriff" or role == "Hero" then
-                RoleCache[player.Name] = "Sheriff"
-                return "Sheriff"
-            end
-        end
-    end
-    
-    -- Проверяем оружие
     local char = player.Character
     local backpack = player:FindFirstChildOfClass("Backpack")
     
+    -- Проверяем наличие Gun (Sheriff)
     if (char and char:FindFirstChild("Gun")) or (backpack and backpack:FindFirstChild("Gun")) then
-        RoleCache[player.Name] = "Sheriff"
         return "Sheriff"
     end
     
+    -- Проверяем наличие Knife (Murderer)
     if (char and char:FindFirstChild("Knife")) or (backpack and backpack:FindFirstChild("Knife")) then
-        RoleCache[player.Name] = "Murderer"
         return "Murderer"
     end
     
-    RoleCache[player.Name] = "Innocent"
     return "Innocent"
 end
 
@@ -737,7 +699,7 @@ local function GetRoleColor(role)
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- СОЗДАНИЕ ESP
+-- СОЗДАНИЕ ESP ДЛЯ ИГРОКА
 -- ═══════════════════════════════════════════════════════════════
 local function CreateESP(player)
     if player == LocalPlayer then return end
@@ -751,20 +713,20 @@ local function CreateESP(player)
         roleLabel = nil,
     }
     
-    -- Highlight (2D Box) - виден через стены
+    -- Highlight (Box ESP) - виден через стены
     local highlight = Instance.new("Highlight")
-    highlight.Name = "FlonsetBox_" .. player.Name
+    highlight.Name = "FlonsetESP_" .. player.Name
     highlight.Adornee = player.Character
     highlight.FillTransparency = 0.7
     highlight.OutlineTransparency = 0
     highlight.FillColor = Settings.InnocentColor
     highlight.OutlineColor = Settings.InnocentColor
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Видно через стены!
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = true
     highlight.Parent = CoreGui
     data.highlight = highlight
     
-    -- BillboardGui (текст)
+    -- BillboardGui (текст над игроком)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "FlonsetBB_" .. player.Name
     billboard.Adornee = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
@@ -840,7 +802,6 @@ local function RemoveESP(player)
     if data.billboard then pcall(function() data.billboard:Destroy() end) end
     
     ESP_Data[player] = nil
-    RoleCache[player.Name] = nil
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -871,11 +832,13 @@ local function UpdateESP()
             local color = GetRoleColor(role)
             
             -- Обновляем Highlight
-            if data.highlight then
+            if data.highlight and Settings.ShowBox then
                 data.highlight.Adornee = char
                 data.highlight.FillColor = color
                 data.highlight.OutlineColor = color
                 data.highlight.Enabled = true
+            elseif data.highlight then
+                data.highlight.Enabled = false
             end
             
             -- Обновляем Billboard
@@ -894,6 +857,8 @@ local function UpdateESP()
                 if data.nameLabel and Settings.ShowName then
                     data.nameLabel.Text = player.DisplayName
                     data.nameLabel.Visible = true
+                elseif data.nameLabel then
+                    data.nameLabel.Visible = false
                 end
                 
                 -- Роль
@@ -901,6 +866,8 @@ local function UpdateESP()
                     data.roleLabel.Text = "[" .. role .. "]"
                     data.roleLabel.TextColor3 = color
                     data.roleLabel.Visible = true
+                elseif data.roleLabel then
+                    data.roleLabel.Visible = false
                 end
             end
         else
@@ -914,7 +881,7 @@ end
 -- ═══════════════════════════════════════════════════════════════
 -- ЗАПУСК / ОСТАНОВКА
 -- ═══════════════════════════════════════════════════════════════
-function BoxESP:Enable()
+function ESP:Enable()
     Settings.Enabled = true
     
     for _, player in ipairs(Players:GetPlayers()) do
@@ -923,7 +890,7 @@ function BoxESP:Enable()
         end
     end
     
-    BoxESP.PlayerAddedConn = Players.PlayerAdded:Connect(function(player)
+    ESP.PlayerAddedConn = Players.PlayerAdded:Connect(function(player)
         player.CharacterAdded:Connect(function()
             task.wait(0.5)
             if Settings.Enabled then
@@ -932,7 +899,7 @@ function BoxESP:Enable()
         end)
     end)
     
-    BoxESP.PlayerRemovingConn = Players.PlayerRemoving:Connect(function(player)
+    ESP.PlayerRemovingConn = Players.PlayerRemoving:Connect(function(player)
         RemoveESP(player)
     end)
     
@@ -940,20 +907,20 @@ function BoxESP:Enable()
         pcall(UpdateESP)
     end)
     
-    print("✅ Box ESP enabled!")
+    print("✅ ESP enabled!")
 end
 
-function BoxESP:Disable()
+function ESP:Disable()
     Settings.Enabled = false
     
-    if BoxESP.PlayerAddedConn then
-        BoxESP.PlayerAddedConn:Disconnect()
-        BoxESP.PlayerAddedConn = nil
+    if ESP.PlayerAddedConn then
+        ESP.PlayerAddedConn:Disconnect()
+        ESP.PlayerAddedConn = nil
     end
     
-    if BoxESP.PlayerRemovingConn then
-        BoxESP.PlayerRemovingConn:Disconnect()
-        BoxESP.PlayerRemovingConn = nil
+    if ESP.PlayerRemovingConn then
+        ESP.PlayerRemovingConn:Disconnect()
+        ESP.PlayerRemovingConn = nil
     end
     
     if UpdateThread then
@@ -965,45 +932,50 @@ function BoxESP:Disable()
         RemoveESP(player)
     end
     
-    print("❌ Box ESP disabled!")
+    print("❌ ESP disabled!")
 end
 
 -- ═══════════════════════════════════════════════════════════════
 -- НАСТРОЙКИ
 -- ═══════════════════════════════════════════════════════════════
-function BoxESP:SetShowName(v) Settings.ShowName = v end
-function BoxESP:SetShowDistance(v) Settings.ShowDistance = v end
-function BoxESP:SetShowRole(v) Settings.ShowRole = v end
-function BoxESP:SetMaxDistance(v) Settings.MaxDistance = v end
-function BoxESP:SetMurdererColor(c) Settings.MurdererColor = c end
-function BoxESP:SetSheriffColor(c) Settings.SheriffColor = c end
-function BoxESP:SetInnocentColor(c) Settings.InnocentColor = c end
+function ESP:SetShowBox(v) Settings.ShowBox = v end
+function ESP:SetShowName(v) Settings.ShowName = v end
+function ESP:SetShowDistance(v) Settings.ShowDistance = v end
+function ESP:SetShowRole(v) Settings.ShowRole = v end
+function ESP:SetMaxDistance(v) Settings.MaxDistance = v end
+function ESP:SetMurdererColor(c) Settings.MurdererColor = c end
+function ESP:SetSheriffColor(c) Settings.SheriffColor = c end
+function ESP:SetInnocentColor(c) Settings.InnocentColor = c end
 
 -- ═══════════════════════════════════════════════════════════════
--- ИНТЕГРАЦИЯ В GUI (вставь это в свою Visuals вкладку)
+-- ИНТЕГРАЦИЯ В GUI (вставь это в Visuals вкладку)
 -- ═══════════════════════════════════════════════════════════════
-local VisualsBox = CreateSection(VisualsTab, "2D Box ESP")
+local VisualsESP = CreateSection(VisualsTab, "ESP")
 
-VisualsBox.AddToggle("Enable 2D Box", false, function(v)
+VisualsESP.AddToggle("Enable ESP", false, function(v)
     if v then
-        BoxESP:Enable()
+        ESP:Enable()
     else
-        BoxESP:Disable()
+        ESP:Disable()
     end
 end)
 
-VisualsBox.AddToggle("Show Name", true, function(v)
-    BoxESP:SetShowName(v)
+VisualsESP.AddToggle("Show Box", true, function(v)
+    ESP:SetShowBox(v)
 end)
 
-VisualsBox.AddToggle("Show Distance", true, function(v)
-    BoxESP:SetShowDistance(v)
+VisualsESP.AddToggle("Show Name", true, function(v)
+    ESP:SetShowName(v)
 end)
 
-VisualsBox.AddToggle("Show Role", true, function(v)
-    BoxESP:SetShowRole(v)
+VisualsESP.AddToggle("Show Distance", true, function(v)
+    ESP:SetShowDistance(v)
 end)
 
-VisualsBox.AddSlider("Max Distance", 100, 2000, 1000, function(v)
-    BoxESP:SetMaxDistance(v)
+VisualsESP.AddToggle("Show Role", true, function(v)
+    ESP:SetShowRole(v)
+end)
+
+VisualsESP.AddSlider("Max Distance", 100, 2000, 1000, function(v)
+    ESP:SetMaxDistance(v)
 end)
