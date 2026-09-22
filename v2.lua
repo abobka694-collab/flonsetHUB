@@ -1,12 +1,13 @@
 -- =======================================================
--- FLONSET PREMIUM MM2 HUB FOR XENO (ORION PC UI)
+-- OFFICIAL FLONSET PREMIUM PC HUB FOR XENO (V2 FIXED)
 -- =======================================================
-print("[XENO-FLONSET] Инициализация ПК-интерфейса Orion...")
+print("[XENO-FLONSET] Инициализация кастомного интерфейса...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
 -- Переменные для функций чита
 local speedEnabled = false
@@ -17,26 +18,157 @@ local shootMurdererEnabled = false
 
 local activeEsp = {}
 
--- Загружаем проверенную и стабильную Orion Library (ПК зеркало)
-local OrionLib = loadstring(game:HttpGet('https://githubusercontent.com'))()
+-- 1. КОНТЕЙНЕР ИНТЕРФЕЙСА (Пробиваем CoreGui на ПК)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FlonsetXenoPremiumGui"
+ScreenGui.ResetOnSpawn = false
+pcall(function() ScreenGui.Parent = CoreGui end)
+if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- Создаем главное окно чита
-local Window = OrionLib:MakeWindow({
-    Name = "FLONSET PREMIUM V2 (MM2)", 
-    HidePremium = true, 
-    SaveConfig = false, 
-    ConfigFolder = "FlonsetConfig"
-})
+-- 2. ГЛАВНОЕ ОКНО ЧИТА (Дизайн со скриншота)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 360, 0, 240)
+MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Меню можно двигать мышкой по экрану!
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- 3. БОКОВАЯ СТИЛЬНАЯ ПАНЕЛЬ (Sidebar)
+local SideBar = Instance.new("Frame")
+SideBar.Size = UDim2.new(0, 85, 1, 0)
+SideBar.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideBar.BorderSizePixel = 0
+SideBar.Parent = MainFrame
+
+local SideCorner = Instance.new("UICorner")
+SideCorner.CornerRadius = UDim.new(0, 10)
+SideCorner.Parent = SideBar
+
+local SideHide = Instance.new("Frame")
+SideHide.Size = UDim2.new(0, 15, 1, 0)
+SideHide.Position = UDim2.new(1, -15, 0, 0)
+SideHide.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideHide.BorderSizePixel = 0
+SideHide.Parent = SideBar
+
+-- Твой логотип: Буква "F"
+local Logo = Instance.new("TextLabel")
+Logo.Size = UDim2.new(1, 0, 0, 45)
+Logo.Text = "F"
+Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
+Logo.Font = Enum.Font.GothamBold
+Logo.TextSize = 32
+Logo.BackgroundTransparency = 1
+Logo.Parent = SideBar
+
+-- 4. ПАНЕЛЬ ДЛЯ КОНТЕНТА ВКЛАДОК
+local ContentPanel = Instance.new("Frame")
+ContentPanel.Size = UDim2.new(1, -95, 1, -10)
+ContentPanel.Position = UDim2.new(0, 90, 0, 5)
+ContentPanel.BackgroundTransparency = 1
+ContentPanel.Parent = MainFrame
+
+local tabs = {}
+local tabButtons = {}
+
+-- Функция создания вкладок
+local function CreateTab(tabName)
+    local TabContainer = Instance.new("Frame")
+    TabContainer.Size = UDim2.new(1, 0, 1, 0)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.Visible = false
+    TabContainer.Parent = ContentPanel
+    
+    tabs[tabName] = TabContainer
+    
+    local btnCount = #tabButtons
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(0.85, 0, 0, 26)
+    TabBtn.Position = UDim2.new(0.075, 0, 0, 55 + (btnCount * 30))
+    TabBtn.Text = tabName:upper()
+    TabBtn.Font = Enum.Font.GothamBold
+    TabBtn.TextSize = 9
+    TabBtn.TextColor3 = Color3.fromRGB(130, 130, 145)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+    TabBtn.Parent = SideBar
+    
+    local BC = Instance.new("UICorner")
+    BC.CornerRadius = UDim.new(0, 5)
+    BC.Parent = TabBtn
+    
+    table.insert(tabButtons, TabBtn)
+    
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, container in pairs(tabs) do container.Visible = false end
+        for _, btn in ipairs(tabButtons) do 
+            btn.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+            btn.TextColor3 = Color3.fromRGB(130, 130, 145) 
+        end
+        TabContainer.Visible = true
+        TabBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
+end
+
+-- Функция добавления красивых интерактивных кнопок
+local function AddToggleButton(tabName, text, yPos, callback)
+    local container = tabs[tabName]
+    if not container then return end
+    
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.9, 0, 0, 32)
+    Btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    Btn.Text = text .. ": OFF"
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 10
+    Btn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+    Btn.TextColor3 = Color3.fromRGB(200, 200, 210)
+    Btn.Parent = container
+    
+    local BC = Instance.new("UICorner")
+    BC.CornerRadius = UDim.new(0, 6)
+    BC.Parent = Btn
+    
+    local enabled = false
+    Btn.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        if enabled then
+            Btn.Text = text .. ": ON"
+            Btn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+            Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            Btn.Text = text .. ": OFF"
+            Btn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+            Btn.TextColor3 = Color3.fromRGB(200, 200, 210)
+        end
+        callback(enabled)
+    end)
+end
 
 -- =======================================================
--- ВКЛАДКА 1: VISUALS (Профессиональное 2D-Box ESP через Drawing)
+-- ГЕНЕРАЦИЯ ВКЛАДОК ДЛЯ ПК МЕНЮ
 -- =======================================================
-local VisualsTab = Window:MakeTab({
-    Name = "Visuals",
-    Icon = "rbxassetid://4483362458",
-    PremiumOnly = false
-})
+CreateTab("Visuals")
+CreateTab("Movement")
+CreateTab("Target")
+CreateTab("Config")
 
+-- Открываем первую вкладку по умолчанию
+if tabs["Visuals"] and tabButtons then
+    tabs["Visuals"].Visible = true
+    tabButtons.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+    tabButtons.TextColor3 = Color3.fromRGB(255, 255, 255)
+end
+
+-- =======================================================
+-- ВКЛАДКА 1: VISUALS (2D-Box ESP через Drawing API для Xeno)
+-- =======================================================
 local function removeEsp(player)
     if activeEsp[player] then
         pcall(function()
@@ -79,7 +211,6 @@ local function createEsp(player)
         
         if hrp and hum and hum.Health > 0 then
             local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-            
             if onScreen then
                 local scale = 1 / (pos.Z * math.tan(math.rad(Camera.FieldOfView / 2))) * 1000
                 local boxX = scale * 0.5
@@ -116,71 +247,38 @@ local function createEsp(player)
     end)
 end
 
-VisualsTab:AddToggle({
-    Name = "2D Box ESP (Drawing API)",
-    Default = false,
-    Callback = function(Value)
-        espEnabled = Value
-        if Value then
-            for _, p in ipairs(Players:GetPlayers()) do createEsp(p) end
-        else
-            for p, _ in pairs(activeEsp) do removeEsp(p) end
-            table.clear(activeEsp)
-        end
+AddToggleButton("Visuals", "2D Box ESP", 35, function(state)
+    espEnabled = state
+    if state then
+        for _, p in ipairs(Players:GetPlayers()) do createEsp(p) end
+    else
+        for p, _ in pairs(activeEsp) do removeEsp(p) end
+        table.clear(activeEsp)
     end
-})
-
-Players.PlayerAdded:Connect(function(p)
-    if espEnabled then createEsp(p) end
 end)
 
--- =======================================================
--- ВКЛАДКА 2: MOVEMENT (Скорость бега и Автоподбор)
--- =======================================================
-local MovementTab = Window:MakeTab({
-    Name = "Movement",
-    Icon = "rbxassetid://4483362618",
-    PremiumOnly = false
-})
+Players.PlayerAdded:Connect(function(p) if espEnabled then createEsp(p) end end)
 
-MovementTab:AddToggle({
-    Name = "Enable Speed Hack",
-    Default = false,
-    Callback = function(Value)
-        speedEnabled = Value
-    end
-})
-
-MovementTab:AddSlider({
-    Name = "Speed Value",
-    Min = 16,
-    Max = 100,
-    Default = 32,
-    Color = Color3.fromRGB(0, 150, 100),
-    Increment = 1,
-    ValueName = "Studs",
-    Callback = function(Value)
-        speedValue = Value
-    end
-})
+-- =======================================================
+-- ВКЛАДКА 2: MOVEMENT (Скорость и Автоподбор пистолета)
+-- =======================================================
+AddToggleButton("Movement", "Speed Hack (32)", 35, function(state)
+    speedEnabled = state
+end)
 
 task.spawn(function()
     while task.wait(0.5) do
         pcall(function()
             local char = LocalPlayer.Character
             local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = speedEnabled and speedValue or 16 end
+            if hum then hum.WalkSpeed = speedEnabled and 32 or 16 end
         end)
     end
 end)
 
-MovementTab:AddToggle({
-    Name = "Auto-Grab Dropped Gun",
-    Default = false,
-    Callback = function(Value)
-        grabEnabled = Value
-    end
-})
+AddToggleButton("Movement", "Auto-Grab Gun", 75, function(state)
+    grabEnabled = state
+end)
 
 task.spawn(function()
     while task.wait(0.5) do
@@ -190,85 +288,3 @@ task.spawn(function()
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 local gunDrop = workspace:FindFirstChild("GunDrop")
                 if gunDrop and hrp then
-                    local distance = (hrp.Position - gunDrop.Position).Magnitude
-                    local duration = distance / 45
-                    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-                    local tween = TweenService:Create(gunDrop, tweenInfo, {CFrame = hrp.CFrame})
-                    tween:Play()
-                end
-            end
-        end)
-    end
-end)
-
--- =======================================================
--- ВКЛАДКА 3: TARGET (Авто-выстрел в маньяка)
--- =======================================================
-local TargetTab = Window:MakeTab({
-    Name = "Target",
-    Icon = "rbxassetid://4483364237",
-    PremiumOnly = false
-})
-
-local function findMurderer()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local knife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
-            local hum = player.Character:FindFirstChildOfClass("Humanoid")
-            if knife and hum and hum.Health > 0 then return player end
-        end
-    end
-    return nil
-end
-
-task.spawn(function()
-    while task.wait(0.1) do
-        pcall(function()
-            if shootMurdererEnabled then
-                local char = LocalPlayer.Character
-                local gun = char and char:FindFirstChild("Gun")
-                if gun and gun:FindFirstChild("Shoot") and gun.Shoot:IsA("RemoteEvent") then
-                    local m = findMurderer()
-                    if m and m.Character and m.Character:FindFirstChild("HumanoidRootPart") then
-                        local targetHrp = m.Character.HumanoidRootPart
-                        local myHrp = char:FindFirstChild("HumanoidRootPart")
-                        if myHrp and targetHrp then
-                            gun.Shoot:FireServer(myHrp.CFrame, CFrame.new(targetHrp.Position))
-                            task.wait(1)
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-TargetTab:AddToggle({
-    Name = "Shoot Murderer (Auto-Aim)",
-    Default = false,
-    Callback = function(Value)
-        shootMurdererEnabled = Value
-    end
-})
-
--- =======================================================
--- ВКЛАДКА 4: CONFIG (Управление читом)
--- =======================================================
-local ConfigTab = Window:MakeTab({
-    Name = "Config",
-    Icon = "rbxassetid://4483362748",
-    PremiumOnly = false
-})
-
-ConfigTab:AddButton({
-    Name = "Close / Unload Script",
-    Callback = function()
-        speedEnabled = false espEnabled = false grabEnabled = false shootMurdererEnabled = false
-        for p, _ in pairs(activeEsp) do removeEsp(p) end
-        table.clear(activeEsp)
-        OrionLib:Destroy()
-    end
-})
-
--- Финальный запуск интерфейса
-OrionLib:Init()
