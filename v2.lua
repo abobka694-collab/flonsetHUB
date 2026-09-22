@@ -1,48 +1,38 @@
--- =======================================================
--- OFFICIAL FLONSET PREMIUM PC HUB FOR XENO (V2 FIXED)
--- =======================================================
-print("[XENO-FLONSET] Инициализация кастомного интерфейса...")
+print("[FLONSET-GUI] Отрисовка чистого визуального интерфейса...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
--- Переменные для функций чита
-local speedEnabled = false
-local speedValue = 32
-local espEnabled = false
-local grabEnabled = false
-local shootMurdererEnabled = false
-
-local activeEsp = {}
-
--- 1. КОНТЕЙНЕР ИНТЕРФЕЙСА (Пробиваем CoreGui на ПК)
+-- 1. КОНТЕЙНЕР ДЛЯ ОТРИСОВКИ ИНТЕРФЕЙСА
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlonsetXenoPremiumGui"
+ScreenGui.Name = "FlonsetShitaroGui"
 ScreenGui.ResetOnSpawn = false
-pcall(function() ScreenGui.Parent = CoreGui end)
-if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- 2. ГЛАВНОЕ ОКНО ЧИТА (Дизайн со скриншота)
+-- Пробиваем рендеринг через CoreGui, если не выходит — страхуемся через PlayerGui
+local success, _ = pcall(function() ScreenGui.Parent = CoreGui end)
+if not success or not ScreenGui.Parent then 
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
+end
+
+-- 2. ГЛАВНОЕ ОКНО ЧИТА (Темно-серый матовый прямоугольник)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 240)
+MainFrame.Size = UDim2.new(0, 320, 0, 200)
 MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24) -- Глубокий темный тон
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true -- Меню можно двигать мышкой по экрану!
+MainFrame.Draggable = true -- Меню можно плавно перетаскивать мышкой по экрану ПК!
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
--- 3. БОКОВАЯ СТИЛЬНАЯ ПАНЕЛЬ (Sidebar)
+-- 3. БОКОВАЯ СТИЛЬНАЯ ПАНЕЛЬ НАВИГАЦИИ (Sidebar)
 local SideBar = Instance.new("Frame")
-SideBar.Size = UDim2.new(0, 85, 1, 0)
-SideBar.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideBar.Size = UDim2.new(0, 75, 1, 0)
+SideBar.BackgroundColor3 = Color3.fromRGB(26, 26, 34) -- Сайдбар чуть светлее основы
 SideBar.BorderSizePixel = 0
 SideBar.Parent = MainFrame
 
@@ -50,35 +40,52 @@ local SideCorner = Instance.new("UICorner")
 SideCorner.CornerRadius = UDim.new(0, 10)
 SideCorner.Parent = SideBar
 
+-- Ограничитель скругления правых углов сайдбара
 local SideHide = Instance.new("Frame")
 SideHide.Size = UDim2.new(0, 15, 1, 0)
 SideHide.Position = UDim2.new(1, -15, 0, 0)
-SideHide.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+SideHide.BackgroundColor3 = Color3.fromRGB(26, 26, 34)
 SideHide.BorderSizePixel = 0
 SideHide.Parent = SideBar
 
--- Твой логотип: Буква "F"
+-- ЛОГОТИП: Фирменная большая буква "F" вверху панели
 local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(1, 0, 0, 45)
 Logo.Text = "F"
 Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
 Logo.Font = Enum.Font.GothamBold
-Logo.TextSize = 32
+Logo.TextSize = 28
 Logo.BackgroundTransparency = 1
 Logo.Parent = SideBar
 
--- 4. ПАНЕЛЬ ДЛЯ КОНТЕНТА ВКЛАДОК
+-- Контейнер для списка вкладок
+local ButtonScroll = Instance.new("ScrollingFrame")
+ButtonScroll.Size = UDim2.new(1, 0, 1, -70)
+ButtonScroll.Position = UDim2.new(0, 0, 0, 50)
+ButtonScroll.BackgroundTransparency = 1
+ButtonScroll.BorderSizePixel = 0
+ButtonScroll.ScrollBarThickness = 0
+ButtonScroll.CanvasSize = UDim2.new(0, 0, 0, 200)
+ButtonScroll.Parent = SideBar
+
+local ScrollLayout = Instance.new("UIListLayout")
+ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ScrollLayout.Padding = UDim.new(0, 4)
+ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ScrollLayout.Parent = ButtonScroll
+
+-- 4. ГЛАВНАЯ ПАНЕЛЬ ДЛЯ КОНТЕНТА (Там, где отображаются плитки)
 local ContentPanel = Instance.new("Frame")
-ContentPanel.Size = UDim2.new(1, -95, 1, -10)
-ContentPanel.Position = UDim2.new(0, 90, 0, 5)
+ContentPanel.Size = UDim2.new(1, -85, 1, -10)
+ContentPanel.Position = UDim2.new(0, 80, 0, 5)
 ContentPanel.BackgroundTransparency = 1
 ContentPanel.Parent = MainFrame
 
 local tabs = {}
 local tabButtons = {}
 
--- Функция создания вкладок
-local function CreateTab(tabName)
+-- Функция автоматической сборки вкладок в сайдбаре
+local function CreateTab(tabName, shortName)
     local TabContainer = Instance.new("Frame")
     TabContainer.Size = UDim2.new(1, 0, 1, 0)
     TabContainer.BackgroundTransparency = 1
@@ -89,202 +96,153 @@ local function CreateTab(tabName)
     
     local btnCount = #tabButtons
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0.85, 0, 0, 26)
-    TabBtn.Position = UDim2.new(0.075, 0, 0, 55 + (btnCount * 30))
-    TabBtn.Text = tabName:upper()
+    TabBtn.Size = UDim2.new(0.85, 0, 0, 24)
+    TabBtn.Position = UDim2.new(0.075, 0, 0, (btnCount * 28))
+    TabBtn.Text = shortName
     TabBtn.Font = Enum.Font.GothamBold
     TabBtn.TextSize = 9
     TabBtn.TextColor3 = Color3.fromRGB(130, 130, 145)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
-    TabBtn.Parent = SideBar
+    TabBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 46)
+    TabBtn.Parent = ButtonScroll
     
-    local BC = Instance.new("UICorner")
-    BC.CornerRadius = UDim.new(0, 5)
-    BC.Parent = TabBtn
+    local BCorner = Instance.new("UICorner")
+    BCorner.CornerRadius = UDim.new(0, 5)
+    BCorner.Parent = TabBtn
     
     table.insert(tabButtons, TabBtn)
     
+    -- Логика плавного переключения вкладок в меню
     TabBtn.MouseButton1Click:Connect(function()
         for _, container in pairs(tabs) do container.Visible = false end
         for _, btn in ipairs(tabButtons) do 
-            btn.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+            btn.BackgroundColor3 = Color3.fromRGB(34, 34, 46)
             btn.TextColor3 = Color3.fromRGB(130, 130, 145) 
         end
         TabContainer.Visible = true
-        TabBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+        TabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
         TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     end)
 end
 
--- Функция добавления красивых интерактивных кнопок
-local function AddToggleButton(tabName, text, yPos, callback)
+-- Функция создания красивых карточек-плиток
+local function AddCard(tabName, titleText, descText, index)
     local container = tabs[tabName]
     if not container then return end
     
-    local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(0.9, 0, 0, 32)
-    Btn.Position = UDim2.new(0.05, 0, 0, yPos)
-    Btn.Text = text .. ": OFF"
-    Btn.Font = Enum.Font.GothamBold
-    Btn.TextSize = 10
-    Btn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-    Btn.TextColor3 = Color3.fromRGB(200, 200, 210)
-    Btn.Parent = container
+    local posX = (index == 1) and 5 or 120
     
-    local BC = Instance.new("UICorner")
-    BC.CornerRadius = UDim.new(0, 6)
-    BC.Parent = Btn
+    local Card = Instance.new("TextButton")
+    Card.Size = UDim2.new(0, 105, 0, 95)
+    Card.Position = UDim2.new(0, posX, 0, 40)
+    Card.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+    Card.BorderSizePixel = 0
+    Card.Text = ""
+    Card.Parent = container
+    
+    local CardCorner = Instance.new("UICorner")
+    CardCorner.CornerRadius = UDim.new(0, 8)
+    CardCorner.Parent = Card
+    
+    -- Серая мини-картинка внутри плитки (Заглушка)
+    local ImgBox = Instance.new("Frame")
+    ImgBox.Size = UDim2.new(1, -12, 0, 50)
+    ImgBox.Position = UDim2.new(0, 6, 0, 6)
+    ImgBox.BackgroundColor3 = Color3.fromRGB(38, 38, 52)
+    ImgBox.BorderSizePixel = 0
+    ImgBox.Parent = Card
+    
+    local ImgCorner = Instance.new("UICorner")
+    ImgCorner.CornerRadius = UDim.new(0, 6)
+    ImgCorner.Parent = ImgBox
+    
+    local InnerText = Instance.new("TextLabel")
+    InnerText.Size = UDim2.new(1, 0, 1, 0)
+    InnerText.Text = "FLON"
+    InnerText.Font = Enum.Font.GothamBold
+    InnerText.TextSize = 14
+    InnerText.TextColor3 = Color3.fromRGB(65, 65, 85)
+    InnerText.BackgroundTransparency = 1
+    InnerText.Parent = ImgBox
+    
+    -- Текст названия функции на карточке
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -12, 0, 18)
+    Title.Position = UDim2.new(0, 6, 0, 60)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 10
+    Title.TextColor3 = Color3.fromRGB(220, 220, 230)
+    Title.TextXAlignment = Enum.TextXAlignment.Center
+    Title.BackgroundTransparency = 1
+    Title.Parent = Card
+    
+    -- Нижняя строчка статуса (Меняет цвет при нажатии)
+    local Status = Instance.new("TextLabel")
+    Status.Size = UDim2.new(1, -12, 0, 12)
+    Status.Position = UDim2.new(0, 6, 0, 76)
+    Status.Text = descText .. ": OFF"
+    Status.Font = Enum.Font.Gotham
+    Status.TextSize = 8
+    Status.TextColor3 = Color3.fromRGB(120, 120, 140)
+    Status.TextXAlignment = Enum.TextXAlignment.Center
+    Status.BackgroundTransparency = 1
+    Status.Parent = Card
     
     local enabled = false
-    Btn.MouseButton1Click:Connect(function()
+    Card.MouseButton1Click:Connect(function()
         enabled = not enabled
         if enabled then
-            Btn.Text = text .. ": ON"
-            Btn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-            Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            Status.Text = descText .. ": ON"
+            Status.TextColor3 = Color3.fromRGB(0, 200, 120) -- Зеленеет при клике
+            Card.BackgroundColor3 = Color3.fromRGB(34, 46, 42)
         else
-            Btn.Text = text .. ": OFF"
-            Btn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-            Btn.TextColor3 = Color3.fromRGB(200, 200, 210)
+            Status.Text = descText .. ": OFF"
+            Status.TextColor3 = Color3.fromRGB(120, 120, 140)
+            Card.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
         end
-        callback(enabled)
     end)
 end
 
 -- =======================================================
--- ГЕНЕРАЦИЯ ВКЛАДОК ДЛЯ ПК МЕНЮ
+-- СБОРКА ТВОИХ РАЗДЕЛОВ МЕНЮ
 -- =======================================================
-CreateTab("Visuals")
-CreateTab("Movement")
-CreateTab("Target")
-CreateTab("Config")
+CreateTab("Visuals", "VISUAL")
+CreateTab("Movement", "MOVE")
+CreateTab("Target", "TARGET")
+CreateTab("Config", "CONFIG")
 
--- Открываем первую вкладку по умолчанию
+-- Открываем вкладку VISUALS по умолчанию
 if tabs["Visuals"] and tabButtons then
     tabs["Visuals"].Visible = true
-    tabButtons.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+    tabButtons.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     tabButtons.TextColor3 = Color3.fromRGB(255, 255, 255)
 end
 
--- =======================================================
--- ВКЛАДКА 1: VISUALS (2D-Box ESP через Drawing API для Xeno)
--- =======================================================
-local function removeEsp(player)
-    if activeEsp[player] then
-        pcall(function()
-            activeEsp[player].Box.Visible = false
-            activeEsp[player].Box:Remove()
-            activeEsp[player].Text.Visible = false
-            activeEsp[player].Text:Remove()
-        end)
-        activeEsp[player] = nil
-    end
-end
+-- Расставляем интерактивные плитки по вкладкам
+AddCard("Visuals", "Neon Chams", "ESP", 1)
+AddCard("Visuals", "Player Box", "ESP", 2)
 
-local function createEsp(player)
-    if player == LocalPlayer then return end
-    
-    local box = Drawing.new("Square")
-    box.Thickness = 1.8
-    box.Filled = false
-    box.Transparency = 1
-    
-    local text = Drawing.new("Text")
-    text.Size = 13
-    text.Center = true
-    text.Outline = true
-    text.Transparency = 1
-    
-    activeEsp[player] = {Box = box, Text = text}
-    
-    local connection
-    connection = game:GetService("RunService").RenderStepped:Connect(function()
-        if not espEnabled or not player.Parent or not player.Character then
-            removeEsp(player)
-            if connection then connection:Disconnect() end
-            return
-        end
-        
-        local char = player.Character
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        
-        if hrp and hum and hum.Health > 0 then
-            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-            if onScreen then
-                local scale = 1 / (pos.Z * math.tan(math.rad(Camera.FieldOfView / 2))) * 1000
-                local boxX = scale * 0.5
-                local boxY = scale * 0.7
-                
-                local knife = char:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
-                local gun = char:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
-                
-                local color = Color3.fromRGB(50, 255, 100)
-                local roleText = player.DisplayName
-                
-                if knife then
-                    color = Color3.fromRGB(255, 50, 50)
-                    roleText = "[MURDERER] " .. player.DisplayName
-                elseif gun then
-                    color = Color3.fromRGB(50, 150, 255)
-                    roleText = "[SHERIFF] " .. player.DisplayName
-                end
-                
-                box.Size = Vector2.new(boxX, boxY)
-                box.Position = Vector2.new(pos.X - boxX/2, pos.Y - boxY/2)
-                box.Color = color
-                box.Visible = true
-                
-                text.Position = Vector2.new(pos.X, pos.Y - boxY/2 - 15)
-                text.Text = roleText
-                text.Color = color
-                text.Visible = true
-                return
-            end
-        end
-        box.Visible = false
-        text.Visible = false
-    end)
-end
+AddCard("Movement", "Speed Hack", "Speed", 1)
+AddCard("Movement", "Auto-Grab", "Grab", 2)
 
-AddToggleButton("Visuals", "2D Box ESP", 35, function(state)
-    espEnabled = state
-    if state then
-        for _, p in ipairs(Players:GetPlayers()) do createEsp(p) end
-    else
-        for p, _ in pairs(activeEsp) do removeEsp(p) end
-        table.clear(activeEsp)
-    end
+AddCard("Target", "Shoot Murderer", "Aim", 1)
+AddCard("Target", "Kill Aura", "Aura", 2)
+
+-- Кнопка полного закрытия чита во вкладке CONFIG
+local UnloadBtn = Instance.new("TextButton")
+UnloadBtn.Size = UDim2.new(0, 105, 0, 32)
+UnloadBtn.Position = UDim2.new(0, 5, 0, 40)
+UnloadBtn.Text = "Close Script"
+UnloadBtn.Font = Enum.Font.GothamBold
+UnloadBtn.TextSize = 11
+UnloadBtn.BackgroundColor3 = Color3.fromRGB(130, 40, 40)
+UnloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnloadBtn.Parent = tabs["Config"]
+
+local UnloadCorner = Instance.new("UICorner")
+UnloadCorner.CornerRadius = UDim.new(0, 6)
+UnloadCorner.Parent = UnloadBtn
+
+UnloadBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
-
-Players.PlayerAdded:Connect(function(p) if espEnabled then createEsp(p) end end)
-
--- =======================================================
--- ВКЛАДКА 2: MOVEMENT (Скорость и Автоподбор пистолета)
--- =======================================================
-AddToggleButton("Movement", "Speed Hack (32)", 35, function(state)
-    speedEnabled = state
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            local char = LocalPlayer.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = speedEnabled and 32 or 16 end
-        end)
-    end
-end)
-
-AddToggleButton("Movement", "Auto-Grab Gun", 75, function(state)
-    grabEnabled = state
-end)
-
-task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            if grabEnabled then
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local gunDrop = workspace:FindFirstChild("GunDrop")
-                if gunDrop and hrp then
