@@ -1,5 +1,5 @@
 -- =======================================================
--- FLONSET PREMIUM MM2 HUB FOR XENO (RAYFIELD UI)
+-- FLONSET PREMIUM MM2 HUB FOR XENO (RAYFIELD UI FIXED)
 -- =======================================================
 print("[XENO-FLONSET] Инициализация премиум-интерфейса...")
 
@@ -17,15 +17,15 @@ local shootMurdererEnabled = false
 
 local activeEsp = {}
 
--- Загружаем оригинальную и стабильную Rayfield UI
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu'))()
+-- ИСПРАВЛЕНО: Загружаем стабильное зеркало Rayfield из официального репозитория GitHub
+local Rayfield = loadstring(game:HttpGet('https://githubusercontent.com'))()
 
 -- Создаем главное окно чита
 local Window = Rayfield:CreateWindow({
    Name = "FLONSET PREMIUM V2 (MM2)",
    LoadingTitle = "Flonset Hub Loading...",
    LoadingSubtitle = "by abobka694-collab",
-   Theme = "DarkTheme", -- Красивая темная тема
+   Theme = "DarkTheme", -- Стильная темная тема
    DisableRayfieldPrompts = true,
    DisableBuildWarnings = true,
    ConfigurationSaving = { Enabled = false }
@@ -34,7 +34,7 @@ local Window = Rayfield:CreateWindow({
 -- =======================================================
 -- ВКЛАДКА 1: VISUALS (Профессиональное 2D-Box ESP)
 -- =======================================================
-local VisualsTab = Window:CreateTab("Visuals", 4483362458) -- Иконка глаза
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
 
 local function removeEsp(player)
     if activeEsp[player] then
@@ -137,7 +137,7 @@ end)
 -- =======================================================
 -- ВКЛАДКА 2: MOVEMENT (Скорость и Автоподбор)
 -- =======================================================
-local MovementTab = Window:CreateTab("Movement", 4483362618) -- Иконка молнии
+local MovementTab = Window:CreateTab("Movement", 4483362618)
 
 MovementTab:CreateToggle({
    Name = "Enable Speed Hack",
@@ -203,7 +203,7 @@ end)
 -- =======================================================
 -- ВКЛАДКА 3: TARGET (Аимбот / Авто-выстрел)
 -- =======================================================
-local TargetTab = Window:CreateTab("Target", 4483364237) -- Иконка мишени
+local TargetTab = Window:CreateTab("Target", 4483364237)
 
 local function findMurderer()
     for _, player in ipairs(Players:GetPlayers()) do
@@ -250,7 +250,7 @@ TargetTab:CreateToggle({
 -- =======================================================
 -- ВКЛАДКА 4: CONFIG (Управление скриптом)
 -- =======================================================
-local ConfigTab = Window:CreateTab("Config", 4483362748) -- Иконка шестеренки
+local ConfigTab = Window:CreateTab("Config", 4483362748)
 
 ConfigTab:CreateButton({
    Name = "Close / Unload Script",
