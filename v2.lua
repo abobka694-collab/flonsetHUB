@@ -1,7 +1,7 @@
 -- =======================================================
--- FLONSET PREMIUM MM2 HUB FOR XENO (RAYFIELD UI FIXED)
+-- FLONSET PREMIUM MM2 HUB FOR XENO (ORION PC UI)
 -- =======================================================
-print("[XENO-FLONSET] Инициализация премиум-интерфейса...")
+print("[XENO-FLONSET] Инициализация ПК-интерфейса Orion...")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -17,24 +17,25 @@ local shootMurdererEnabled = false
 
 local activeEsp = {}
 
--- ИСПРАВЛЕНО: Загружаем стабильное зеркало Rayfield из официального репозитория GitHub
-local Rayfield = loadstring(game:HttpGet('https://githubusercontent.com'))()
+-- Загружаем проверенную и стабильную Orion Library (ПК зеркало)
+local OrionLib = loadstring(game:HttpGet('https://githubusercontent.com'))()
 
 -- Создаем главное окно чита
-local Window = Rayfield:CreateWindow({
-   Name = "FLONSET PREMIUM V2 (MM2)",
-   LoadingTitle = "Flonset Hub Loading...",
-   LoadingSubtitle = "by abobka694-collab",
-   Theme = "DarkTheme", -- Стильная темная тема
-   DisableRayfieldPrompts = true,
-   DisableBuildWarnings = true,
-   ConfigurationSaving = { Enabled = false }
+local Window = OrionLib:MakeWindow({
+    Name = "FLONSET PREMIUM V2 (MM2)", 
+    HidePremium = true, 
+    SaveConfig = false, 
+    ConfigFolder = "FlonsetConfig"
 })
 
 -- =======================================================
--- ВКЛАДКА 1: VISUALS (Профессиональное 2D-Box ESP)
+-- ВКЛАДКА 1: VISUALS (Профессиональное 2D-Box ESP через Drawing)
 -- =======================================================
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+local VisualsTab = Window:MakeTab({
+    Name = "Visuals",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
+})
 
 local function removeEsp(player)
     if activeEsp[player] then
@@ -115,19 +116,18 @@ local function createEsp(player)
     end)
 end
 
-VisualsTab:CreateToggle({
-   Name = "2D Box ESP (Through Walls)",
-   CurrentValue = false,
-   Flag = "BoxEspToggle",
-   Callback = function(Value)
-      espEnabled = Value
-      if Value then
-          for _, p in ipairs(Players:GetPlayers()) do createEsp(p) end
-      else
-          for p, _ in pairs(activeEsp) do removeEsp(p) end
-          table.clear(activeEsp)
-      end
-   end,
+VisualsTab:AddToggle({
+    Name = "2D Box ESP (Drawing API)",
+    Default = false,
+    Callback = function(Value)
+        espEnabled = Value
+        if Value then
+            for _, p in ipairs(Players:GetPlayers()) do createEsp(p) end
+        else
+            for p, _ in pairs(activeEsp) do removeEsp(p) end
+            table.clear(activeEsp)
+        end
+    end
 })
 
 Players.PlayerAdded:Connect(function(p)
@@ -135,31 +135,33 @@ Players.PlayerAdded:Connect(function(p)
 end)
 
 -- =======================================================
--- ВКЛАДКА 2: MOVEMENT (Скорость и Автоподбор)
+-- ВКЛАДКА 2: MOVEMENT (Скорость бега и Автоподбор)
 -- =======================================================
-local MovementTab = Window:CreateTab("Movement", 4483362618)
-
-MovementTab:CreateToggle({
-   Name = "Enable Speed Hack",
-   CurrentValue = false,
-   Flag = "SpeedToggle",
-   Callback = function(Value)
-      speedEnabled = Value
-   end,
+local MovementTab = Window:MakeTab({
+    Name = "Movement",
+    Icon = "rbxassetid://4483362618",
+    PremiumOnly = false
 })
 
-MovementTab:CreateSlider({
-   Name = "Speed Value",
-   Min = 16,
-   Max = 100,
-   DefaultValue = 32,
-   Color = Color3.fromRGB(0, 150, 100),
-   Increment = 1,
-   ValueName = "Studs",
-   Flag = "SpeedSlider",
-   Callback = function(Value)
-      speedValue = Value
-   end,
+MovementTab:AddToggle({
+    Name = "Enable Speed Hack",
+    Default = false,
+    Callback = function(Value)
+        speedEnabled = Value
+    end
+})
+
+MovementTab:AddSlider({
+    Name = "Speed Value",
+    Min = 16,
+    Max = 100,
+    Default = 32,
+    Color = Color3.fromRGB(0, 150, 100),
+    Increment = 1,
+    ValueName = "Studs",
+    Callback = function(Value)
+        speedValue = Value
+    end
 })
 
 task.spawn(function()
@@ -172,13 +174,12 @@ task.spawn(function()
     end
 end)
 
-MovementTab:CreateToggle({
-   Name = "Auto-Grab Dropped Gun",
-   CurrentValue = false,
-   Flag = "GrabToggle",
-   Callback = function(Value)
-      grabEnabled = Value
-   end,
+MovementTab:AddToggle({
+    Name = "Auto-Grab Dropped Gun",
+    Default = false,
+    Callback = function(Value)
+        grabEnabled = Value
+    end
 })
 
 task.spawn(function()
@@ -201,9 +202,13 @@ task.spawn(function()
 end)
 
 -- =======================================================
--- ВКЛАДКА 3: TARGET (Аимбот / Авто-выстрел)
+-- ВКЛАДКА 3: TARGET (Авто-выстрел в маньяка)
 -- =======================================================
-local TargetTab = Window:CreateTab("Target", 4483364237)
+local TargetTab = Window:MakeTab({
+    Name = "Target",
+    Icon = "rbxassetid://4483364237",
+    PremiumOnly = false
+})
 
 local function findMurderer()
     for _, player in ipairs(Players:GetPlayers()) do
@@ -238,34 +243,32 @@ task.spawn(function()
     end
 end)
 
-TargetTab:CreateToggle({
-   Name = "Shoot Murderer (Auto-Aim)",
-   CurrentValue = false,
-   Flag = "ShootToggle",
-   Callback = function(Value)
-      shootMurdererEnabled = Value
-   end,
+TargetTab:AddToggle({
+    Name = "Shoot Murderer (Auto-Aim)",
+    Default = false,
+    Callback = function(Value)
+        shootMurdererEnabled = Value
+    end
 })
 
 -- =======================================================
--- ВКЛАДКА 4: CONFIG (Управление скриптом)
+-- ВКЛАДКА 4: CONFIG (Управление читом)
 -- =======================================================
-local ConfigTab = Window:CreateTab("Config", 4483362748)
-
-ConfigTab:CreateButton({
-   Name = "Close / Unload Script",
-   Callback = function()
-      speedEnabled = false espEnabled = false grabEnabled = false shootMurdererEnabled = false
-      for p, _ in pairs(activeEsp) do removeEsp(p) end
-      table.clear(activeEsp)
-      Rayfield:Destroy()
-   end,
+local ConfigTab = Window:MakeTab({
+    Name = "Config",
+    Icon = "rbxassetid://4483362748",
+    PremiumOnly = false
 })
 
-Rayfield:Notify({
-   Title = "Flonset Hub Loaded!",
-   Content = "Enjoy professional features on Xeno.",
-   Duration = 5,
-   Image = 4483362458,
-   Actions = { Ignore = { Name = "Okay!", Callback = function() end } },
+ConfigTab:AddButton({
+    Name = "Close / Unload Script",
+    Callback = function()
+        speedEnabled = false espEnabled = false grabEnabled = false shootMurdererEnabled = false
+        for p, _ in pairs(activeEsp) do removeEsp(p) end
+        table.clear(activeEsp)
+        OrionLib:Destroy()
+    end
 })
+
+-- Финальный запуск интерфейса
+OrionLib:Init()
