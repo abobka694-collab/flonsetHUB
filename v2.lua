@@ -979,3 +979,308 @@ end)
 VisualsESP.AddSlider("Max Distance", 100, 2000, 1000, function(v)
     ESP:SetMaxDistance(v)
 end)
+-- ═══════════════════════════════════════════════════════════════
+-- FLONSET HUB - SILENT AIM MODULE
+-- С предикшном, Force Shoot и FOV кругом
+-- ═══════════════════════════════════════════════════════════════
+
+local SilentAim = {}
+
+-- ═══════════════════════════════════════════════════════════════
+-- НАСТРОЙКИ
+-- ═══════════════════════════════════════════════════════════════
+local Settings = {
+    Enabled = false,
+    FOV = 150, -- Радиус FOV в пикселях
+    ShowFOV = true,
+    FOVColor = Color3.fromRGB(255, 255, 255),
+    FOVThickness = 2,
+    
+    -- Цели
+    TargetPart = "Head", -- Head, HumanoidRootPart, UpperTorso
+    TeamCheck = false,
+    VisibleCheck = false, -- Проверка видимости (если выключено - стреляет через стены)
+    ForceShoot = true, -- Прострел через стены
+    
+    -- Предикшн
+    Prediction = true,
+    PredictionScale = 1.0, -- Множитель предикшна (0.5 - 2.0)
+    
+    -- Максимальная дистанция
+    MaxDistance = 500,
+}
+
+-- ═══════════════════════════════════════════════════════════════
+-- СЕРВИСЫ
+-- ═══════════════════════════════════════════════════════════════
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПЕРЕМЕННЫЕ
+-- ═══════════════════════════════════════════════════════════════
+local CurrentTarget = nil
+local FOVCircle = nil
+local UpdateThread = nil
+local WeaponService = nil
+local OriginalGetMouseTargetCFrame = nil
+local OriginalGetTargetPosition = nil
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПРОВЕРКА DRAWING API
+-- ═══════════════════════════════════════════════════════════════
+local DrawingAvailable = pcall(function()
+    local test = Drawing.new("Circle")
+    test:Remove()
+end)
+
+-- ═══════════════════════════════════════════════════════════════
+-- СОЗДАНИЕ FOV КРУГА
+-- ═══════════════════════════════════════════════════════════════
+local function CreateFOVCircle()
+    if not DrawingAvailable then return end
+    if FOVCircle then return end
+    
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Radius = Settings.FOV
+    FOVCircle.Color = Settings.FOVColor
+    FOVCircle.Thickness = Settings.FOVThickness
+    FOVCircle.Filled = false
+    FOVCircle.NumSides = 64
+    FOVCircle.Transparency = 0.8
+    FOVCircle.Visible = false
+end
+
+local function UpdateFOVCircle()
+    if not FOVCircle then return end
+    
+    if Settings.ShowFOV and Settings.Enabled then
+        local mousePos = UserInputService:GetMouseLocation()
+        FOVCircle.Position = mousePos
+        FOVCircle.Radius = Settings.FOV
+        FOVCircle.Color = Settings.FOVColor
+        FOVCircle.Thickness = Settings.FOVThickness
+        FOVCircle.Visible = true
+    else
+        FOVCircle.Visible = false
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ WEAPON SERVICE
+-- ═══════════════════════════════════════════════════════════════
+local function GetWeaponService()
+    if WeaponService then return WeaponService end
+    
+    local ok, module = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
+    end)
+    
+    if ok and type(module) == "table" then
+        WeaponService = module
+        return module
+    end
+    
+    return nil
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ ЦЕЛИ В FOV
+-- ═══════════════════════════════════════════════════════════════
+local function GetTargetInFOV()
+    local mousePos = UserInputService:GetMouseLocation()
+    local closestPlayer = nil
+    local closestDistance = Settings.FOV
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        
+        local char = player.Character
+        if not char then continue end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        
+        -- Team check (если включен)
+        if Settings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+        
+        local part = char:FindFirstChild(Settings.TargetPart) or char:FindFirstChild("HumanoidRootPart")
+        if not part then continue end
+        
+        -- Проверка дистанции
+        local myChar = LocalPlayer.Character
+        local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            local distance = (part.Position - myRoot.Position).Magnitude
+            if distance > Settings.MaxDistance then continue end
+        end
+        
+        -- Проверка видимости (если включена)
+        if Settings.VisibleCheck and not Settings.ForceShoot then
+            local rayParams = RaycastParams.new()
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+            rayParams.FilterDescendantsInstances = {myChar, char}
+            
+            local myHead = myChar and myChar:FindFirstChild("Head")
+            if myHead then
+                local direction = part.Position - myHead.Position
+                local result = workspace:Raycast(myHead.Position, direction, rayParams)
+                
+                if result and result.Instance ~= part and not part:IsDescendantOf(result.Instance) then
+                    continue -- Препятствие между нами
+                end
+            end
+        end
+        
+        -- Проекция на экран
+        local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+        if not onScreen then continue end
+        
+        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+        local distance = (screenPos2D - mousePos).Magnitude
+        
+        if distance < closestDistance then
+            closestDistance = distance
+            closestPlayer = player
+        end
+    end
+    
+    return closestPlayer
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПРЕДИКШН (ПРЕДСКАЗАНИЕ ПОЗИЦИИ)
+-- ═══════════════════════════════════════════════════════════════
+local function PredictPosition(part, player)
+    if not Settings.Prediction then return part.Position end
+    
+    -- Получаем velocity
+    local velocity = Vector3.zero
+    local ok, vel = pcall(function() return part.AssemblyLinearVelocity end)
+    if ok and typeof(vel) == "Vector3" then
+        velocity = vel
+    end
+    
+    -- Получаем пинг
+    local ping = 0
+    local ok2, pingValue = pcall(function() return LocalPlayer:GetNetworkPing() end)
+    if ok2 and type(pingValue) == "number" then
+        ping = pingValue
+    end
+    
+    -- Вычисляем предикшн
+    local leadTime = ping * Settings.PredictionScale
+    local predictedPos = part.Position + velocity * leadTime
+    
+    return predictedPos
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ПОЛУЧЕНИЕ ЦЕЛЕВОЙ ТОЧКИ
+-- ═══════════════════════════════════════════════════════════════
+local function GetTargetPoint(player)
+    if not player or not player.Character then return nil end
+    
+    local char = player.Character
+    local part = char:FindFirstChild(Settings.TargetPart) or char:FindFirstChild("HumanoidRootPart")
+    if not part then return nil end
+    
+    -- Применяем предикшн
+    local targetPos = PredictPosition(part, player)
+    
+    return targetPos
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ХУКИ WEAPON SERVICE
+-- ═══════════════════════════════════════════════════════════════
+local function InstallHooks()
+    local module = GetWeaponService()
+    if not module then return end
+    
+    -- Хук GetMouseTargetCFrame
+    if type(module.GetMouseTargetCFrame) == "function" then
+        if OriginalGetMouseTargetCFrame == nil then
+            OriginalGetMouseTargetCFrame = module.GetMouseTargetCFrame
+            
+            module.GetMouseTargetCFrame = function(self, ...)
+                if Settings.Enabled then
+                    local target = GetTargetInFOV()
+                    if target then
+                        CurrentTarget = target
+                        local targetPos = GetTargetPoint(target)
+                        if targetPos then
+                            return CFrame.new(targetPos)
+                        end
+                    end
+                end
+                
+                return OriginalGetMouseTargetCFrame(self, ...)
+            end
+        end
+    end
+    
+    -- Хук GetTargetPosition
+    if type(module.GetTargetPosition) == "function" then
+        if OriginalGetTargetPosition == nil then
+            OriginalGetTargetPosition = module.GetTargetPosition
+            
+            module.GetTargetPosition = function(self, ...)
+                if Settings.Enabled then
+                    local target = GetTargetInFOV()
+                    if target then
+                        CurrentTarget = target
+                        local targetPos = GetTargetPoint(target)
+                        if targetPos then
+                            return targetPos
+                        end
+                    end
+                end
+                
+                return OriginalGetTargetPosition(self, ...)
+            end
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ЗАПУСК / ОСТАНОВКА
+-- ═══════════════════════════════════════════════════════════════
+function SilentAim:Enable()
+    Settings.Enabled = true
+    
+    -- Создаем FOV круг
+    if DrawingAvailable then
+        CreateFOVCircle()
+    end
+    
+    -- Устанавливаем хуки
+    task.spawn(function()
+        task.wait(0.5)
+        pcall(InstallHooks)
+    end)
+    
+    -- Запускаем цикл обновления FOV
+    UpdateThread = RunService.RenderStepped:Connect(function()
+        pcall(UpdateFOVCircle)
+    end)
+    
+    print("✅ Silent Aim enabled!")
+end
+
+function SilentAim:Disable()
+    Settings.Enabled = false
+    
+    -- Отключаем цикл обновления
+    if UpdateThread then
+        UpdateThread:Disconnect()
+        UpdateThread = nil
+    end
+    
+    -- Скрываем FOV круг
+    if FOVCircle then
+        FOVCircle.Visible = false
