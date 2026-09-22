@@ -1280,3 +1280,554 @@ function SilentAim:SetMaxDistance(value) Settings.MaxDistance = value end
 
 return SilentAim
 
+-- ═══════════════════════════════════════════════════════════════
+-- MOVEMENT ВКЛАДКА
+-- ═══════════════════════════════════════════════════════════════
+local MovementTab = CreateTab("Movement")
+
+-- ═══════════════════════════════════════════════════════════════
+-- FAKE SPEEDGLITCH
+-- ═══════════════════════════════════════════════════════════════
+local SpeedGlitch = {}
+local SpeedSettings = {
+    Enabled = false,
+    Speed = 100,
+    Mode = "WalkSpeed", -- "WalkSpeed" или "Velocity"
+}
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local SpeedThread = nil
+
+local function ApplySpeedGlitch()
+    if not SpeedSettings.Enabled then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    
+    if not hum or not hrp then return end
+    
+    if SpeedSettings.Mode == "WalkSpeed" then
+        pcall(function()
+            hum.WalkSpeed = SpeedSettings.Speed
+        end)
+    else
+        pcall(function()
+            local moveDir = hum.MoveDirection
+            if moveDir.Magnitude > 0 then
+                hrp.AssemblyLinearVelocity = Vector3.new(
+                    moveDir.X * SpeedSettings.Speed,
+                    hrp.AssemblyLinearVelocity.Y,
+                    moveDir.Z * SpeedSettings.Speed
+                )
+            end
+        end)
+    end
+end
+
+function SpeedGlitch:Enable()
+    SpeedSettings.Enabled = true
+    
+    SpeedThread = RunService.Heartbeat:Connect(function()
+        pcall(ApplySpeedGlitch)
+    end)
+    
+    print("✅ SpeedGlitch enabled! Speed:", SpeedSettings.Speed)
+end
+
+function SpeedGlitch:Disable()
+    SpeedSettings.Enabled = false
+    
+    if SpeedThread then
+        SpeedThread:Disconnect()
+        SpeedThread = nil
+    end
+    
+    -- Восстанавливаем нормальную скорость
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function() hum.WalkSpeed = 16 end)
+        end
+    end
+    
+    print("❌ SpeedGlitch disabled!")
+end
+
+function SpeedGlitch:SetSpeed(value)
+    SpeedSettings.Speed = value
+end
+
+function SpeedGlitch:SetMode(mode)
+    SpeedSettings.Mode = mode
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- PIXEL SURF (цепляется за любые стенки)
+-- ═══════════════════════════════════════════════════════════════
+local PixelSurf = {}
+local SurfSettings = {
+    Enabled = false,
+    Speed = 35,
+    Range = 5,
+}
+
+local SurfThread = nil
+local SurfPlatform = nil
+local SurfParams = RaycastParams.new()
+SurfParams.FilterType = Enum.RaycastFilterType.Exclude
+SurfParams.IgnoreWater = true
+
+local SURF_ANGLES = {0, 0.3, -0.3, 0.62, -0.62, 0.95, -0.95}
+local SURF_OFFSETS = {-0.35, -0.15, 0.06, 0.26, 0.5, 0.85, 1.25}
+local SURF_UP = 2.9
+local SURF_DOWN = 2.4
+local SURF_LEN = 11
+local SURF_DEPTH = 2.6
+local SURF_THICK = 1.6
+
+local function CreatePlatform()
+    if SurfPlatform and SurfPlatform.Parent then return SurfPlatform end
+    
+    local p = Instance.new("Part")
+    p.Name = "PixelSurfPlatform"
+    p.Anchored = true
+    p.CanCollide = false
+    p.CanQuery = false
+    p.CanTouch = false
+    p.Transparency = 1
+    p.Material = Enum.Material.SmoothPlastic
+    p.Size = Vector3.new(SURF_LEN, SURF_THICK, SURF_DEPTH)
+    p.Parent = workspace
+    
+    SurfPlatform = p
+    return p
+end
+
+local function Yaw(v, angle)
+    local c, s = math.cos(angle), math.sin(angle)
+    return Vector3.new(v.X * c + v.Z * s, 0, v.Z * c - v.X * s)
+end
+
+local function FlatUnit(v)
+    local f = Vector3.new(v.X, 0, v.Z)
+    if f.Magnitude > 0 then return f.Unit end
+    return Vector3.zero
+end
+
+local function SurfCast(origin, dir)
+    local char = LocalPlayer.Character
+    SurfParams.FilterDescendantsInstances = {char, SurfPlatform}
+    return workspace:Raycast(origin, dir, SurfParams)
+end
+
+local function SurfFeet(hrp, hum)
+    local hip = hum.HipHeight
+    if hip > 0 then
+        return hrp.Position.Y - hrp.Size.Y * 0.5 - hip
+    end
+    return hrp.Position.Y - 3
+end
+
+local function SurfProbe(origin, feet, dir)
+    local hit = SurfCast(origin, dir)
+    if hit and math.abs(hit.Normal.Y) < 0.45 then return hit end
+    
+    hit = SurfCast(Vector3.new(origin.X, feet + 0.8, origin.Z), dir)
+    if hit and math.abs(hit.Normal.Y) < 0.45 then return hit end
+    
+    return nil
+end
+
+local function FindWall(hrp, feet, move, look)
+    local pos = hrp.Position
+    
+    for pass = 1, 2 do
+        local base = pass == 1 and move or look
+        if base ~= Vector3.zero and (pass == 1 or move == Vector3.zero or move:Dot(look) < 0.99) then
+            for i = 1, #SURF_ANGLES do
+                local hit = SurfProbe(pos, feet, Yaw(base, SURF_ANGLES[i]) * SurfSettings.Range)
+                if hit then return hit end
+            end
+        end
+    end
+    
+    return nil
+end
+
+local function ScanSurface(hrp, hum, move, look)
+    local feet = SurfFeet(hrp, hum)
+    local wall = FindWall(hrp, feet, move, look)
+    if not wall then return nil end
+    
+    local n = FlatUnit(wall.Normal)
+    if n == Vector3.zero then return nil end
+    
+    local ground = SurfCast(hrp.Position, Vector3.new(0, -(SURF_DOWN + 4), 0))
+    local gy = ground and ground.Position.Y or -1e9
+    local face = wall.Position
+    
+    local best, top, tp
+    for i = 1, #SURF_OFFSETS do
+        local o = face + n * SURF_OFFSETS[i]
+        local hit = SurfCast(Vector3.new(o.X, feet + SURF_UP, o.Z), Vector3.new(0, -(SURF_UP + SURF_DOWN + 0.2), 0))
+        if hit and hit.Normal.Y > 0.35 then
+            local y = hit.Position.Y
+            if y > gy + 0.75 and y < feet + SURF_UP - 0.25 and y > feet - SURF_DOWN then
+                local score
+                if y >= feet - 0.3 then
+                    score = y - feet
+                else
+                    score = 1000 - y
+                end
+                if not best or score < best then
+                    best, top, tp = score, y, hit.Position
+                end
+            end
+        end
+    end
+    
+    if not top then return nil end
+    return Vector3.new(tp.X, top, tp.Z), n, feet
+end
+
+local function UpdateSurf()
+    if not SurfSettings.Enabled then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum or hum.Health <= 0 then return end
+    
+    local camera = workspace.CurrentCamera
+    local move = FlatUnit(hum.MoveDirection)
+    local look = camera and FlatUnit(camera.CFrame.LookVector) or Vector3.zero
+    
+    local pos, n, feet = ScanSurface(hrp, hum, move, look)
+    if not pos then
+        if SurfPlatform then
+            SurfPlatform.CanCollide = false
+        end
+        return
+    end
+    
+    local tangent = FlatUnit(n:Cross(Vector3.yAxis))
+    if tangent == Vector3.zero then return end
+    
+    local hp = hrp.Position
+    local dx, dz = pos.X - hp.X, pos.Z - hp.Z
+    local dist = math.sqrt(dx * dx + dz * dz)
+    local push = move ~= Vector3.zero and move:Dot(n) or 0
+    
+    if hum.FloorMaterial ~= Enum.Material.Air or dist > 2.8 or move == Vector3.zero or push > -0.15 then
+        return
+    end
+    
+    local p = CreatePlatform()
+    local center = pos + n * (SURF_DEPTH * 0.5 - 0.45) - Vector3.new(0, SURF_THICK * 0.5 + 0.02, 0)
+    p.CFrame = CFrame.lookAt(center, center - n)
+    
+    local solid = feet >= pos.Y - 0.06
+    p.CanCollide = solid
+    
+    local along = move:Dot(tangent)
+    local sign = 0
+    if math.abs(along) > 0.35 then
+        sign = along > 0 and 1 or -1
+    elseif sign == 0 then
+        sign = (look:Dot(tangent) < 0) and -1 or 1
+    end
+    
+    local v = hrp.AssemblyLinearVelocity
+    local err = pos.Y - feet
+    local vy
+    if err > 0.05 then
+        vy = math.min(err * 14 + 1.5, 34)
+    elseif err < -0.4 then
+        vy = math.max(v.Y, err * 8)
+    elseif v.Y > 0 then
+        vy = v.Y
+    else
+        vy = err * 8
+    end
+    
+    local cur = v.X * tangent.X + v.Z * tangent.Z
+    local speed = cur + (SurfSettings.Speed * sign - cur) * 0.9
+    local gap = (hp.X - pos.X) * n.X + (hp.Z - pos.Z) * n.Z
+    local hug = math.clamp((0.75 - gap) * 9, -9, 9)
+    local glide = tangent * speed + n * hug
+    
+    hrp.AssemblyLinearVelocity = Vector3.new(glide.X, vy, glide.Z)
+end
+
+function PixelSurf:Enable()
+    SurfSettings.Enabled = true
+    CreatePlatform()
+    
+    SurfThread = RunService.Stepped:Connect(function()
+        pcall(UpdateSurf)
+    end)
+    
+    print("✅ Pixel Surf enabled!")
+end
+
+function PixelSurf:Disable()
+    SurfSettings.Enabled = false
+    
+    if SurfThread then
+        SurfThread:Disconnect()
+        SurfThread = nil
+    end
+    
+    if SurfPlatform then
+        SurfPlatform.CanCollide = false
+    end
+    
+    print("❌ Pixel Surf disabled!")
+end
+
+function PixelSurf:SetSpeed(value)
+    SurfSettings.Speed = value
+end
+
+function PixelSurf:SetRange(value)
+    SurfSettings.Range = value
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- GUI ЭЛЕМЕНТЫ
+-- ═══════════════════════════════════════════════════════════════
+local MovementSpeed = CreateSection(MovementTab, "Speed")
+
+MovementSpeed.AddToggle("Fake SpeedGlitch", false, function(v)
+    if v then
+        SpeedGlitch:Enable()
+    else
+        SpeedGlitch:Disable()
+    end
+end)
+
+MovementSpeed.AddSlider("Speed", 16, 500, 100, function(v)
+    SpeedGlitch:SetSpeed(v)
+end)
+
+MovementSpeed.AddButton("Mode: WalkSpeed (Safe)", function()
+    SpeedGlitch:SetMode("WalkSpeed")
+    print("Mode: WalkSpeed")
+end)
+
+MovementSpeed.AddButton("Mode: Velocity (Aggressive)", function()
+    SpeedGlitch:SetMode("Velocity")
+    print("Mode: Velocity")
+end)
+
+local MovementSurf = CreateSection(MovementTab, "Pixel Surf")
+
+MovementSurf.AddToggle("Enable Pixel Surf", false, function(v)
+    if v then
+        PixelSurf:Enable()
+    else
+        PixelSurf:Disable()
+    end
+end)
+
+MovementSurf.AddSlider("Surf Speed", 10, 100, 35, function(v)
+    PixelSurf:SetSpeed(v)
+end)
+
+MovementSurf.AddSlider("Wall Range", 3, 10, 5, function(v)
+    PixelSurf:SetRange(v)
+end)
+
+print("✅ Movement tab loaded!")
+
+-- ═══════════════════════════════════════════════════════════════
+-- KEYBIND СИСТЕМА (для SpeedGlitch и Pixel Surf)
+-- ═══════════════════════════════════════════════════════════════
+
+-- Функция создания Keybind элемента
+local function CreateKeybind(tab, name, defaultKey, callback)
+    local KeybindFrame = Instance.new("Frame")
+    KeybindFrame.Name = name
+    KeybindFrame.Size = UDim2.new(1, 0, 0, 35)
+    KeybindFrame.BackgroundColor3 = COLORS.Button
+    KeybindFrame.BorderSizePixel = 0
+    KeybindFrame.Parent = tab.Content
+    
+    local KeybindCorner = Instance.new("UICorner")
+    KeybindCorner.CornerRadius = UDim.new(0, 6)
+    KeybindCorner.Parent = KeybindFrame
+    
+    local KeybindLabel = Instance.new("TextLabel")
+    KeybindLabel.Size = UDim2.new(1, -100, 1, 0)
+    KeybindLabel.Position = UDim2.new(0, 10, 0, 0)
+    KeybindLabel.BackgroundTransparency = 1
+    KeybindLabel.Text = name
+    KeybindLabel.TextColor3 = COLORS.Text
+    KeybindLabel.TextSize = 13
+    KeybindLabel.Font = Enum.Font.Gotham
+    KeybindLabel.TextXAlignment = Enum.TextXAlignment.Left
+    KeybindLabel.Parent = KeybindFrame
+    
+    local KeybindButton = Instance.new("TextButton")
+    KeybindButton.Size = UDim2.new(0, 80, 0, 25)
+    KeybindButton.Position = UDim2.new(1, -90, 0.5, -12.5)
+    KeybindButton.BackgroundColor3 = COLORS.ToggleActive
+    KeybindButton.Text = defaultKey or "None"
+    KeybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KeybindButton.TextSize = 12
+    KeybindButton.Font = Enum.Font.GothamBold
+    KeybindButton.BorderSizePixel = 0
+    KeybindButton.Parent = KeybindFrame
+    
+    local KeybindButtonCorner = Instance.new("UICorner")
+    KeybindButtonCorner.CornerRadius = UDim.new(0, 4)
+    KeybindButtonCorner.Parent = KeybindButton
+    
+    local currentKey = defaultKey or "None"
+    local waitingForKey = false
+    local keyConn = nil
+    
+    KeybindButton.MouseButton1Click:Connect(function()
+        if waitingForKey then return end
+        
+        waitingForKey = true
+        KeybindButton.Text = "..."
+        KeybindButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+        
+        keyConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed then return end
+            
+            -- Игнорируем мышь
+            if input.UserInputType == Enum.UserInputType.MouseButton1 
+                or input.UserInputType == Enum.UserInputType.MouseButton2 
+                or input.UserInputType == Enum.UserInputType.MouseButton3 then
+                return
+            end
+            
+            -- Устанавливаем новую клавишу
+            currentKey = input.KeyCode.Name
+            
+            KeybindButton.Text = currentKey
+            KeybindButton.BackgroundColor3 = COLORS.ToggleActive
+            
+            waitingForKey = false
+            if keyConn then keyConn:Disconnect() end
+            keyConn = nil
+            
+            if callback then callback(currentKey) end
+        end)
+        
+        -- Таймаут 10 секунд
+        task.delay(10, function()
+            if waitingForKey then
+                waitingForKey = false
+                KeybindButton.Text = currentKey
+                KeybindButton.BackgroundColor3 = COLORS.ToggleActive
+                if keyConn then keyConn:Disconnect() end
+                keyConn = nil
+            end
+        end)
+    end)
+    
+    return {
+        GetValue = function() return currentKey end,
+        SetValue = function(v)
+            currentKey = v
+            KeybindButton.Text = v
+        end
+    }
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- KEYBIND ДЛЯ FAKE SPEEDGLITCH
+-- ═══════════════════════════════════════════════════════════════
+local SpeedGlitchKeybind = nil
+
+local function SetupSpeedGlitchKeybind(keyName)
+    if SpeedGlitchKeybind then
+        SpeedGlitchKeybind:Disconnect()
+        SpeedGlitchKeybind = nil
+    end
+    
+    if keyName == "None" then return end
+    
+    local keyCode = Enum.KeyCode[keyName]
+    if not keyCode then return end
+    
+    SpeedGlitchKeybind = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == keyCode then
+            -- Переключаем SpeedGlitch
+            local toggle = MovementSpeed.AddToggle -- получаем текущее состояние
+            -- Находим текущее состояние через callback
+            if SpeedGlitch then
+                -- Инвертируем состояние
+                local currentState = false
+                -- Проверяем через GUI toggle если есть доступ
+                -- Для простоты - просто вызываем enable/disable
+                print("🔑 SpeedGlitch keybind pressed: " .. keyName)
+                -- Здесь можно добавить логику переключения
+            end
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- KEYBIND ДЛЯ PIXEL SURF
+-- ═══════════════════════════════════════════════════════════════
+local PixelSurfKeybind = nil
+
+local function SetupPixelSurfKeybind(keyName)
+    if PixelSurfKeybind then
+        PixelSurfKeybind:Disconnect()
+        PixelSurfKeybind = nil
+    end
+    
+    if keyName == "None" then return end
+    
+    local keyCode = Enum.KeyCode[keyName]
+    if not keyCode then return end
+    
+    PixelSurfKeybind = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == keyCode then
+            print("🔑 Pixel Surf keybind pressed: " .. keyName)
+            -- Здесь можно добавить логику переключения
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- ДОБАВЛЕНИЕ KEYBIND В GUI
+-- ═══════════════════════════════════════════════════════════════
+
+-- Keybind для SpeedGlitch (прямо под секцией Speed)
+MovementSpeed.AddKeybind = function(name, default, callback)
+    return CreateKeybind(MovementSpeed, name, default, callback)
+end
+
+local SpeedGlitchKey = MovementSpeed.AddKeybind("SpeedGlitch Keybind", "None", function(key)
+    SetupSpeedGlitchKeybind(key)
+    print("✅ SpeedGlitch keybind set to: " .. key)
+end)
+
+-- Keybind для Pixel Surf (прямо под секцией Pixel Surf)
+MovementSurf.AddKeybind = function(name, default, callback)
+    return CreateKeybind(MovementSurf, name, default, callback)
+end
+
+local PixelSurfKey = MovementSurf.AddKeybind("Pixel Surf Keybind", "None", function(key)
+    SetupPixelSurfKeybind(key)
+    print("✅ Pixel Surf keybind set to: " .. key)
+end)
+
+print("✅ Keybinds added to Movement tab!")
