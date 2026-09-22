@@ -1,11 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════
--- FLONSET HUB - AUTONOMOUS GUI
--- Работает в Xeno без внешних зависимостей
+-- FLONSET HUB - GUI v2 (Fixed + Hotkey G)
 -- ═══════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -30,6 +30,8 @@ local COLORS = {
     Toggle = Color3.fromRGB(60, 60, 70),
     ToggleActive = Color3.fromRGB(100, 150, 255),
     Border = Color3.fromRGB(50, 50, 55),
+    Close = Color3.fromRGB(220, 50, 50),
+    CloseHover = Color3.fromRGB(240, 70, 70),
 }
 
 -- ═══════════════════════════════════════════════════════════════
@@ -39,6 +41,8 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FlonsetHUB"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = PlayerGui
 
 -- Главное окно
@@ -48,6 +52,7 @@ MainFrame.Size = UDim2.new(0, 600, 0, 400)
 MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
 MainFrame.BackgroundColor3 = COLORS.Background
 MainFrame.BorderSizePixel = 0
+MainFrame.Visible = false -- Скрыто по умолчанию
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -77,47 +82,32 @@ Title.Name = "Title"
 Title.Size = UDim2.new(1, -80, 1, 0)
 Title.Position = UDim2.new(0, 15, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "FlonsetHUB"
+Title.Text = "FlonsetHUB  |  [G]"
 Title.TextColor3 = COLORS.Accent
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Header
 
+-- Подсказка о хоткее
+local HotkeyHint = Instance.new("TextLabel")
+HotkeyHint.Name = "HotkeyHint"
+HotkeyHint.Size = UDim2.new(0, 100, 1, 0)
+HotkeyHint.Position = UDim2.new(1, -130, 0, 0)
+HotkeyHint.BackgroundTransparency = 1
+HotkeyHint.Text = "Press G to toggle"
+HotkeyHint.TextColor3 = COLORS.TextDim
+HotkeyHint.TextSize = 12
+HotkeyHint.Font = Enum.Font.Gotham
+HotkeyHint.TextXAlignment = Enum.TextXAlignment.Right
+HotkeyHint.Parent = Header
+
 -- Кнопка закрытия
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "Close"
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
 CloseButton.Position = UDim2.new(1, -35, 0, 5)
-CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+CloseButton.BackgroundColor3 = COLORS.Close
 CloseButton.Text = "X"
 CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.TextSize = 16
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.BorderSizePixel = 0
-CloseButton.Parent = Header
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseButton
-
--- Боковая панель
-local Sidebar = Instance.new("Frame")
-Sidebar.Name = "Sidebar"
-Sidebar.Size = UDim2.new(0, 120, 1, -40)
-Sidebar.Position = UDim2.new(0, 0, 0, 40)
-Sidebar.BackgroundColor3 = COLORS.Sidebar
-Sidebar.BorderSizePixel = 0
-Sidebar.Parent = MainFrame
-
--- Область контента
-local Content = Instance.new("Frame")
-Content.Name = "Content"
-Content.Size = UDim2.new(1, -120, 1, -40)
-Content.Position = UDim2.new(0, 120, 0, 40)
-Content.BackgroundColor3 = COLORS.Content
-Content.BorderSizePixel = 0
-Content.Parent = MainFrame
-
--- ═══════════════════════════════════════════════════════════════
--- СИСТЕМА ВКЛА
+CloseButton.TextSize
