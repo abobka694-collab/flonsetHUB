@@ -1,6 +1,13 @@
 --[[
-    MM2 Simple Cheat  •  for Arceus X Neo
-    Всё в одном файле, без обфускации
+    MM2 Cheat  •  ProjectReal Edition
+    Полная версия: ESP, Chams, Silent Aim, Kill Aura, Fake Position
+    Для ProjectReal / Real / Wave / Volt (sUNC 100%)
+    
+    Инструкция:
+        1. Запусти ProjectReal
+        2. Инжект в Roblox
+        3. Вставь этот скрипт
+        4. RightShift — открыть/закрыть меню
 ]]
 
 --============================================================
@@ -14,16 +21,12 @@ local VirtualUser       = game:GetService("VirtualUser")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting          = game:GetService("Lighting")
 local CoreGui           = game:GetService("CoreGui")
+local Stats             = game:GetService("Stats")
 
 local LP = Players.LocalPlayer
 
 --============================================================
--- PLATFORM
---============================================================
-local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-
---============================================================
--- GET PARENT (с fallback для Arceus X)
+-- GET PARENT (для ПК все API есть, но fallback оставим)
 --============================================================
 local function get_parent()
     if gethui then
@@ -32,10 +35,6 @@ local function get_parent()
     end
     local ok, cg = pcall(function() return CoreGui end)
     if ok and cg then return cg end
-    local ok2, pg = pcall(function()
-        return LP:FindFirstChildOfClass("PlayerGui")
-    end)
-    if ok2 and pg then return pg end
     return LP:FindFirstChildOfClass("PlayerGui")
 end
 
@@ -43,22 +42,51 @@ end
 -- STATE
 --============================================================
 local State = {
+    -- ESP
     esp = false,
+    espName = true,
+    espRole = true,
+    espDist = true,
+    espBox = true,
+    
+    -- Chams
     chams = false,
+    chamsMode = "Highlight",  -- Highlight / Material
+    
+    -- Combat
+    silentAim = false,
+    silentFov = 200,
+    silentPrediction = true,
     killAura = false,
+    killAuraRange = 15,
     autoShoot = false,
+    
+    -- Movement
     fly = false,
+    flySpeed = 60,
     noclip = false,
     infJump = false,
+    speed = 16,
+    speedEnabled = false,
+    
+    -- Misc
     antiAfk = false,
     fullbright = false,
+    fakePos = false,
+    fakePosRange = 9e7,
 }
 
 local espData = {}
-local flyVelocity = nil
-local flyGyro = nil
+local chamsCache = {}
+local fakePosData = {
+    active = false,
+    realCF = nil,
+    fakePos = nil,
+    originalFPDH = nil,
+    conns = {},
+}
+
 local originalLighting = {}
-local connections = {}
 
 --============================================================
 -- ROLE DETECTION
@@ -83,7 +111,6 @@ local function getRole(player)
             return info.Role or "Innocent"
         end
     end
-    -- Fallback по оружию
     local char = player.Character
     local bp = player:FindFirstChildOfClass("Backpack")
     local function hasTool(name)
@@ -111,7 +138,7 @@ local function createESP(player)
     if not char then return end
 
     local highlight = Instance.new("Highlight")
-    highlight.Name = "SimpleESP"
+    highlight.Name = "MM2ESP"
     highlight.Adornee = char
     highlight.FillTransparency = 0.6
     highlight.OutlineTransparency = 0
@@ -119,9 +146,9 @@ local function createESP(player)
     highlight.Parent = get_parent()
 
     local billboard = Instance.new("BillboardGui")
-    billboard.Name = "SimpleESPBB"
+    billboard.Name = "MM2ESPBB"
     billboard.Adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.Size = UDim2.new(0, 200, 0, 50)
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.AlwaysOnTop = true
     billboard.ResetOnSpawn = false
@@ -193,21 +220,30 @@ local function updateESP()
                     data.highlight.Adornee = char
                     data.highlight.FillColor = color
                     data.highlight.OutlineColor = color
+                    data.highlight.FillTransparency = State.espBox and 0.6 or 1
                 end
                 if data.billboard then
                     data.billboard.Adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
                 end
+                if data.nameLabel then
+                    data.nameLabel.Text = State.espName and player.Name or ""
+                    data.nameLabel.Visible = State.espName
+                end
                 if data.roleLabel then
-                    data.roleLabel.Text = "[" .. role .. "]"
+                    data.roleLabel.Text = State.espRole and ("[" .. role .. "]") or ""
                     data.roleLabel.TextColor3 = color
+                    data.roleLabel.Visible = State.espRole
                 end
                 if data.distLabel then
                     local myChar = LP.Character
                     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
                     local targetRoot = char:FindFirstChild("HumanoidRootPart")
-                    if myRoot and targetRoot then
+                    if myRoot and targetRoot and State.espDist then
                         local dist = (myRoot.Position - targetRoot.Position).Magnitude
                         data.distLabel.Text = string.format("%.0fm", dist)
+                        data.distLabel.Visible = true
+                    else
+                        data.distLabel.Visible = false
                     end
                 end
             end
@@ -227,9 +263,12 @@ end
 --============================================================
 -- CHAMS
 --============================================================
-local chamsCache = {}
+local function applyChamsHighlight(player)
+    -- уже делается через ESP highlight
+    if not espData[player] then createESP(player) end
+end
 
-local function applyChams(player)
+local function applyChamsMaterial(player)
     if player == LP then return end
     local char = player.Character
     if not char then return end
@@ -246,7 +285,7 @@ local function applyChams(player)
     end
 end
 
-local function restoreChams(player)
+local function restoreChamsMaterial(player)
     local char = player.Character
     if not char then return end
     for _, part in ipairs(char:GetDescendants()) do
@@ -267,7 +306,11 @@ local function updateChams()
     if not State.chams then return end
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LP and player.Character then
-            applyChams(player)
+            if State.chamsMode == "Highlight" then
+                applyChamsHighlight(player)
+            else
+                applyChamsMaterial(player)
+            end
         end
     end
 end
@@ -276,11 +319,121 @@ local function toggleChams(v)
     State.chams = v
     if not v then
         for _, player in ipairs(Players:GetPlayers()) do
-            restoreChams(player)
+            restoreChamsMaterial(player)
         end
         chamsCache = {}
     end
 end
+
+--============================================================
+-- SILENT AIM (работает на ProjectReal!)
+--============================================================
+local silentFov = State.silentFov
+
+local function getClosestTarget()
+    local mouse = UserInputService:GetMouseLocation()
+    local cam = workspace.CurrentCamera
+    if not cam then return nil end
+    local closest, closestDist = nil, silentFov
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LP then continue end
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not char or not hum or hum.Health <= 0 then continue end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+
+        local pos = hrp.Position
+        if State.silentPrediction then
+            local vel = hrp.AssemblyLinearVelocity
+            local ping = LP:GetNetworkPing() or 0
+            pos = pos + vel * ping
+        end
+
+        local screenPos, onScreen = cam:WorldToViewportPoint(pos)
+        if not onScreen then continue end
+
+        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouse).Magnitude
+        if dist < closestDist then
+            closestDist = dist
+            closest = hrp
+        end
+    end
+    return closest
+end
+
+-- Хук WeaponService
+local weaponService = nil
+local hookedMouse = false
+local hookedTarget = false
+local originalGetMouse = nil
+local originalGetTarget = nil
+
+local function installSilentHooks()
+    if hookedMouse and hookedTarget then return end
+    
+    local ok, svc = pcall(function()
+        return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
+    end)
+    if not ok or not svc then return end
+    weaponService = svc
+
+    if not hookedMouse and type(svc.GetMouseTargetCFrame) == "function" then
+        originalGetMouse = svc.GetMouseTargetCFrame
+        local hook = newcclosure(function(self, ...)
+            if State.silentAim and not checkcaller() then
+                local target = getClosestTarget()
+                if target then
+                    return CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+                end
+            end
+            return originalGetMouse(self, ...)
+        end)
+        pcall(function() setreadonly(svc, false) end)
+        pcall(function() svc.GetMouseTargetCFrame = hook end)
+        hookedMouse = true
+    end
+
+    if not hookedTarget and type(svc.GetTargetPosition) == "function" then
+        originalGetTarget = svc.GetTargetPosition
+        local hook = newcclosure(function(self, x, y, ...)
+            if State.silentAim and not checkcaller() then
+                local target = getClosestTarget()
+                if target then
+                    return target.Position
+                end
+            end
+            return originalGetTarget(self, x, y, ...)
+        end)
+        pcall(function() setreadonly(svc, false) end)
+        pcall(function() svc.GetTargetPosition = hook end)
+        hookedTarget = true
+    end
+end
+
+local function uninstallSilentHooks()
+    if weaponService then
+        pcall(function() setreadonly(weaponService, false) end)
+        if originalGetMouse then
+            pcall(function() weaponService.GetMouseTargetCFrame = originalGetMouse end)
+        end
+        if originalGetTarget then
+            pcall(function() weaponService.GetTargetPosition = originalGetTarget end)
+        end
+    end
+    hookedMouse = false
+    hookedTarget = false
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if State.silentAim then
+            pcall(installSilentHooks)
+        end
+    end
+end)
 
 --============================================================
 -- KILL AURA (Knife)
@@ -319,6 +472,7 @@ local function doKillAura()
     local stabbed = events:FindFirstChild("KnifeStabbed")
     local touched = events:FindFirstChild("HandleTouched")
     if not stabbed or not touched then return end
+
     local myChar = LP.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
@@ -329,7 +483,7 @@ local function doKillAura()
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if char and hum and hum.Health > 0 then
             local root = char:FindFirstChild("HumanoidRootPart")
-            if root and (root.Position - myRoot.Position).Magnitude <= 15 then
+            if root and (root.Position - myRoot.Position).Magnitude <= State.killAuraRange then
                 pcall(function()
                     stabbed:FireServer()
                     touched:FireServer(root)
@@ -340,7 +494,7 @@ local function doKillAura()
 end
 
 --============================================================
--- AUTO SHOOT
+-- AUTO SHOOT (стреляет в murderer если ты шериф)
 --============================================================
 local function getGun()
     local char = LP.Character
@@ -363,8 +517,6 @@ local function doAutoShoot()
     local shoot = gun:FindFirstChild("Shoot")
     if not shoot or not shoot:IsA("RemoteEvent") then return end
 
-    -- Ищем murderer
-    local target = nil
     local myChar = LP.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
@@ -378,25 +530,23 @@ local function doAutoShoot()
             if char and hum and hum.Health > 0 then
                 local root = char:FindFirstChild("HumanoidRootPart")
                 if root and (root.Position - myRoot.Position).Magnitude <= 200 then
-                    target = root
-                    break
+                    local origin = myRoot.CFrame
+                    local aim = CFrame.new(origin.Position, root.Position)
+                    pcall(function()
+                        shoot:FireServer(origin, aim)
+                    end)
+                    return
                 end
             end
         end
-    end
-
-    if target then
-        local origin = myRoot.CFrame
-        local aim = CFrame.new(origin.Position, target.Position)
-        pcall(function()
-            shoot:FireServer(origin, aim)
-        end)
     end
 end
 
 --============================================================
 -- FLY
 --============================================================
+local flyVelocity, flyGyro
+
 local function startFly()
     local char = LP.Character
     if not char then return end
@@ -407,12 +557,12 @@ local function startFly()
     if flyGyro then flyGyro:Destroy() end
 
     flyGyro = Instance.new("BodyGyro")
-    flyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+    flyGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
     flyGyro.P = 9000
     flyGyro.Parent = hrp
 
     flyVelocity = Instance.new("BodyVelocity")
-    flyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
+    flyVelocity.MaxForce = Vector3.new(4e5, 4e5, 4e5)
     flyVelocity.Velocity = Vector3.zero
     flyVelocity.Parent = hrp
 end
@@ -440,174 +590,9 @@ local function updateFly()
     if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.yAxis end
     if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move = move - Vector3.yAxis end
 
-    if move.Magnitude > 0 then move = move.Unit * 60 end
+    if move.Magnitude > 0 then move = move.Unit * State.flySpeed end
     flyVelocity.Velocity = move
 end
 
 local function toggleFly(v)
-    State.fly = v
-    if v then startFly() else stopFly() end
-end
-
---============================================================
--- NOCLIP
---============================================================
-local function updateNoclip()
-    if not State.noclip then return end
-    local char = LP.Character
-    if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
-end
-
-local function toggleNoclip(v)
-    State.noclip = v
-    if not v then
-        local char = LP.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-end
-
---============================================================
--- INFINITE JUMP
---============================================================
-local function doInfJump()
-    if not State.infJump then return end
-    local char = LP.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end
-
---============================================================
--- ANTI-AFK
---============================================================
-connections[#connections + 1] = LP.Idled:Connect(function()
-    if State.antiAfk then
-        pcall(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end
-end)
-
---============================================================
--- FULLBRIGHT
---============================================================
-local function saveLighting()
-    originalLighting.Brightness = Lighting.Brightness
-    originalLighting.Ambient = Lighting.Ambient
-    originalLighting.OutdoorAmbient = Lighting.OutdoorAmbient
-    originalLighting.GlobalShadows = Lighting.GlobalShadows
-    originalLighting.ClockTime = Lighting.ClockTime
-    originalLighting.FogEnd = Lighting.FogEnd
-end
-
-local function applyFullbright()
-    Lighting.Brightness = 2
-    Lighting.Ambient = Color3.fromRGB(150, 150, 150)
-    Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
-    Lighting.GlobalShadows = false
-    Lighting.ClockTime = 14
-    Lighting.FogEnd = 100000
-end
-
-local function restoreLighting()
-    if originalLighting.Brightness then
-        Lighting.Brightness = originalLighting.Brightness
-        Lighting.Ambient = originalLighting.Ambient
-        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
-        Lighting.GlobalShadows = originalLighting.GlobalShadows
-        Lighting.ClockTime = originalLighting.ClockTime
-        Lighting.FogEnd = originalLighting.FogEnd
-    end
-end
-
-local function toggleFullbright(v)
-    State.fullbright = v
-    if v then applyFullbright() else restoreLighting() end
-end
-
-saveLighting()
-
---============================================================
--- JUMP REQUEST (для Infinite Jump)
---============================================================
-connections[#connections + 1] = UserInputService.JumpRequest:Connect(function()
-    if State.infJump then
-        doInfJump()
-    end
-end)
-
---============================================================
--- CHARACTER RESPAWN
---============================================================
-connections[#connections + 1] = LP.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    if State.fly then startFly() end
-    if State.chams then updateChams() end
-end)
-
---============================================================
--- MAIN LOOP
---============================================================
-local lastKillAura = 0
-local lastAutoShoot = 0
-local lastESP = 0
-
-RunService.Heartbeat:Connect(function()
-    local now = tick()
-
-    -- ESP (раз в 0.3 сек)
-    if State.esp and now - lastESP > 0.3 then
-        lastESP = now
-        pcall(updateESP)
-    end
-
-    -- Chams (раз в 0.5 сек)
-    if State.chams then
-        pcall(updateChams)
-    end
-
-    -- Kill Aura (раз в 0.1 сек)
-    if State.killAura and now - lastKillAura > 0.1 then
-        lastKillAura = now
-        pcall(doKillAura)
-    end
-
-    -- Auto Shoot (раз в 0.15 сек)
-    if State.autoShoot and now - lastAutoShoot > 0.15 then
-        lastAutoShoot = now
-        pcall(doAutoShoot)
-    end
-
-    -- Fly / Noclip
-    pcall(updateFly)
-    pcall(updateNoclip)
-end)
-
---============================================================
--- GUI
---============================================================
-local Theme = {
-    bg = Color3.fromRGB(18, 18, 20),
-    card = Color3.fromRGB(26, 26, 30),
-    accent = Color3.fromRGB(150, 100, 255),
-    text = Color3.fromRGB(240, 240, 245),
-    textDim = Color3.fromRGB(140, 140, 150),
-    toggleOff = Color3.fromRGB(55, 55, 60),
-    outline = Color3.fromRGB(40, 40, 45),
-}
-
-local function new(class, props, parent)
-    local inst = Instance.new(class)
+    St
