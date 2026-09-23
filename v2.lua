@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- FLONSET HUB v6.0 - FULL SHITARO RECODE (UNC 100)
+-- FLONSET HUB v8.0 - PROJECT REAL OPTIMIZED (UNC/sUNC 100%)
 -- ═══════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -11,11 +11,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local Stats = game:GetService("Stats")
-local CollectionService = game:GetService("CollectionService")
-local VirtualUser = game:GetService("VirtualUser")
-local TeleportService = game:GetService("TeleportService")
-local SoundService = game:GetService("SoundService")
-local Debris = game:GetService("Debris")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -23,9 +18,23 @@ if PlayerGui:FindFirstChild("FlonsetHUB") then
     PlayerGui:FindFirstChild("FlonsetHUB"):Destroy()
 end
 
--- ══════════════════════════════════════════════════════════════
--- GUI
 -- ═══════════════════════════════════════════════════════════════
+-- GUI (Полупрозрачный, закругленный, стиль Shitaro)
+-- ═══════════════════════════════════════════════════════════════
+local COLORS = {
+    Background = Color3.fromRGB(15, 15, 25),
+    Sidebar = Color3.fromRGB(10, 10, 20),
+    Section = Color3.fromRGB(25, 25, 40),
+    Accent = Color3.fromRGB(100, 140, 255),
+    AccentDark = Color3.fromRGB(70, 100, 220),
+    Text = Color3.fromRGB(240, 240, 250),
+    TextDim = Color3.fromRGB(150, 150, 170),
+    ToggleOff = Color3.fromRGB(70, 70, 90),
+    ToggleOn = Color3.fromRGB(100, 140, 255),
+    Border = Color3.fromRGB(50, 50, 70),
+    Hover = Color3.fromRGB(40, 40, 60),
+}
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FlonsetHUB"
 ScreenGui.ResetOnSpawn = false
@@ -38,7 +47,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Name = "Main"
 MainFrame.Size = UDim2.new(0, 800, 0, 500)
 MainFrame.Position = UDim2.new(0.5, -400, 0.5, -250)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+MainFrame.BackgroundColor3 = COLORS.Background
 MainFrame.BackgroundTransparency = 0.15
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
@@ -46,19 +55,19 @@ MainFrame.Parent = ScreenGui
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(50, 50, 70)
+MainStroke.Color = COLORS.Border
 MainStroke.Thickness = 1
 
 local Header = Instance.new("Frame", MainFrame)
 Header.Size = UDim2.new(1, 0, 0, 50)
-Header.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+Header.BackgroundColor3 = COLORS.Sidebar
 Header.BackgroundTransparency = 0.1
 Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
 
 local Logo = Instance.new("Frame", Header)
 Logo.Size = UDim2.new(0, 35, 0, 35)
 Logo.Position = UDim2.new(0, 12, 0, 8)
-Logo.BackgroundColor3 = Color3.fromRGB(100, 140, 255)
+Logo.BackgroundColor3 = COLORS.Accent
 Instance.new("UICorner", Logo).CornerRadius = UDim.new(0, 8)
 
 local LogoText = Instance.new("TextLabel", Logo)
@@ -73,8 +82,8 @@ local Title = Instance.new("TextLabel", Header)
 Title.Size = UDim2.new(0, 150, 1, 0)
 Title.Position = UDim2.new(0, 55, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "FlonsetHUB v6.0"
-Title.TextColor3 = Color3.fromRGB(240, 240, 250)
+Title.Text = "FlonsetHUB v8.0"
+Title.TextColor3 = COLORS.Text
 Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -93,7 +102,7 @@ Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
 local Sidebar = Instance.new("Frame", MainFrame)
 Sidebar.Size = UDim2.new(0, 160, 1, -50)
 Sidebar.Position = UDim2.new(0, 0, 0, 50)
-Sidebar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+Sidebar.BackgroundColor3 = COLORS.Sidebar
 Sidebar.BackgroundTransparency = 0.1
 
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
@@ -105,20 +114,21 @@ SidebarPad.PaddingLeft = UDim.new(0, 10)
 local Content = Instance.new("Frame", MainFrame)
 Content.Size = UDim2.new(1, -160, 1, -50)
 Content.Position = UDim2.new(0, 160, 0, 50)
-Content.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+Content.BackgroundColor3 = COLORS.Background
 Content.BackgroundTransparency = 0.15
 
 local Tabs = {}
 local ActiveTab = nil
-local TabNames = {"COMBAT", "VISUALS", "PLAYER", "MISC", "TARGET", "SKINS"}
+local TabNames = {"COMBAT", "VISUALS", "PLAYER", "MISC", "TARGET"}
 
 for _, name in ipairs(TabNames) do
     local Btn = Instance.new("TextButton", Sidebar)
+    Btn.Name = name
     Btn.Size = UDim2.new(1, 0, 0, 40)
-    Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+    Btn.BackgroundColor3 = COLORS.Section
     Btn.BackgroundTransparency = 0.2
     Btn.Text = "  " .. name
-    Btn.TextColor3 = Color3.fromRGB(150, 150, 170)
+    Btn.TextColor3 = COLORS.TextDim
     Btn.TextSize = 13
     Btn.Font = Enum.Font.GothamBold
     Btn.TextXAlignment = Enum.TextXAlignment.Left
@@ -126,28 +136,32 @@ for _, name in ipairs(TabNames) do
     Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 8)
     
     local TabContent = Instance.new("ScrollingFrame", Content)
+    TabContent.Name = name .. "_Content"
     TabContent.Size = UDim2.new(1, -20, 1, -20)
     TabContent.Position = UDim2.new(0, 10, 0, 10)
     TabContent.BackgroundTransparency = 1
     TabContent.BorderSizePixel = 0
     TabContent.ScrollBarThickness = 4
-    TabContent.ScrollBarImageColor3 = Color3.fromRGB(100, 140, 255)
+    TabContent.ScrollBarImageColor3 = COLORS.Accent
     TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
     TabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
     TabContent.Visible = false
-    Instance.new("UIListLayout", TabContent).Padding = UDim.new(0, 8)
+    
+    local TabLayout = Instance.new("UIListLayout", TabContent)
+    TabLayout.Padding = UDim.new(0, 8)
+    TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
     
     Tabs[name] = { Button = Btn, Content = TabContent }
     
     Btn.MouseButton1Click:Connect(function()
         if ActiveTab == name then return end
-        if ActiveTab then
-            Tabs[ActiveTab].Button.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+        if ActiveTab and Tabs[ActiveTab] then
+            Tabs[ActiveTab].Button.BackgroundColor3 = COLORS.Section
             Tabs[ActiveTab].Button.BackgroundTransparency = 0.2
-            Tabs[ActiveTab].Button.TextColor3 = Color3.fromRGB(150, 150, 170)
+            Tabs[ActiveTab].Button.TextColor3 = COLORS.TextDim
             Tabs[ActiveTab].Content.Visible = false
         end
-        Btn.BackgroundColor3 = Color3.fromRGB(70, 100, 220)
+        Btn.BackgroundColor3 = COLORS.AccentDark
         Btn.BackgroundTransparency = 0
         Btn.TextColor3 = Color3.new(1, 1, 1)
         TabContent.Visible = true
@@ -155,10 +169,11 @@ for _, name in ipairs(TabNames) do
     end)
 end
 
+-- UI Helpers
 local function CreateToggle(parent, name, default, callback)
     local Frame = Instance.new("Frame", parent)
     Frame.Size = UDim2.new(1, 0, 0, 35)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+    Frame.BackgroundColor3 = COLORS.Section
     Frame.BackgroundTransparency = 0.2
     Frame.BorderSizePixel = 0
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -168,7 +183,7 @@ local function CreateToggle(parent, name, default, callback)
     Label.Position = UDim2.new(0, 12, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = name
-    Label.TextColor3 = Color3.fromRGB(240, 240, 250)
+    Label.TextColor3 = COLORS.Text
     Label.TextSize = 13
     Label.Font = Enum.Font.Gotham
     Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -176,7 +191,7 @@ local function CreateToggle(parent, name, default, callback)
     local ToggleBtn = Instance.new("TextButton", Frame)
     ToggleBtn.Size = UDim2.new(0, 40, 0, 22)
     ToggleBtn.Position = UDim2.new(1, -50, 0.5, -11)
-    ToggleBtn.BackgroundColor3 = default and Color3.fromRGB(100, 140, 255) or Color3.fromRGB(70, 70, 90)
+    ToggleBtn.BackgroundColor3 = default and COLORS.ToggleOn or COLORS.ToggleOff
     ToggleBtn.Text = ""
     ToggleBtn.BorderSizePixel = 0
     Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
@@ -190,18 +205,18 @@ local function CreateToggle(parent, name, default, callback)
     local state = default
     ToggleBtn.MouseButton1Click:Connect(function()
         state = not state
-        ToggleBtn.BackgroundColor3 = state and Color3.fromRGB(100, 140, 255) or Color3.fromRGB(70, 70, 90)
+        ToggleBtn.BackgroundColor3 = state and COLORS.ToggleOn or COLORS.ToggleOff
         TweenService:Create(Circle, TweenInfo.new(0.2), {
             Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
         }):Play()
-        if callback then callback(state) end
+        if callback then task.spawn(callback, state) end
     end)
 end
 
 local function CreateSlider(parent, name, min, max, default, callback)
     local Frame = Instance.new("Frame", parent)
     Frame.Size = UDim2.new(1, 0, 0, 50)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+    Frame.BackgroundColor3 = COLORS.Section
     Frame.BackgroundTransparency = 0.2
     Frame.BorderSizePixel = 0
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
@@ -211,7 +226,7 @@ local function CreateSlider(parent, name, min, max, default, callback)
     Label.Position = UDim2.new(0, 10, 0, 5)
     Label.BackgroundTransparency = 1
     Label.Text = name .. ": " .. default
-    Label.TextColor3 = Color3.fromRGB(240, 240, 250)
+    Label.TextColor3 = COLORS.Text
     Label.TextSize = 13
     Label.Font = Enum.Font.Gotham
     Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -219,13 +234,13 @@ local function CreateSlider(parent, name, min, max, default, callback)
     local Bar = Instance.new("Frame", Frame)
     Bar.Size = UDim2.new(1, -20, 0, 8)
     Bar.Position = UDim2.new(0, 10, 0, 32)
-    Bar.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+    Bar.BackgroundColor3 = COLORS.ToggleOff
     Bar.BorderSizePixel = 0
     Instance.new("UICorner", Bar).CornerRadius = UDim.new(1, 0)
     
     local Fill = Instance.new("Frame", Bar)
     Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    Fill.BackgroundColor3 = Color3.fromRGB(100, 140, 255)
+    Fill.BackgroundColor3 = COLORS.Accent
     Fill.BorderSizePixel = 0
     Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
     
@@ -253,7 +268,7 @@ local function CreateSlider(parent, name, min, max, default, callback)
             Fill.Size = UDim2.new(percent, 0, 1, 0)
             Knob.Position = UDim2.new(percent, -7, 0.5, -7)
             Label.Text = name .. ": " .. value
-            if callback then callback(value) end
+            if callback then task.spawn(callback, value) end
         end
     end)
 end
@@ -263,20 +278,18 @@ local function SectionLabel(parent, name)
     Label.Size = UDim2.new(1, 0, 0, 22)
     Label.BackgroundTransparency = 1
     Label.Text = name
-    Label.TextColor3 = Color3.fromRGB(100, 140, 255)
+    Label.TextColor3 = COLORS.Accent
     Label.TextSize = 12
     Label.Font = Enum.Font.GothamBold
     Label.TextXAlignment = Enum.TextXAlignment.Left
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- COMBAT - SILENT AIM (полный с предикшном)
+-- COMBAT: НАСТОЯЩИЙ SILENT AIM (через hookmetamethod)
 -- ═══════════════════════════════════════════════════════════════
 SectionLabel(Tabs["COMBAT"].Content, "⚔ SILENT AIM")
 
-local SilentSettings = { Enabled = false, FOV = 200, Prediction = true, ForceShoot = false, MaxDistance = 500, StandOff = 15 }
-local SilentThread = nil
-local NamecallHook = nil
+local SilentSettings = { Enabled = false, FOV = 200, Prediction = true, MaxDistance = 500 }
 local OriginalNamecall = nil
 
 local function GetTargetInFOV()
@@ -313,124 +326,82 @@ local function PredictPosition(part)
     local velocity = Vector3.zero
     local ok, vel = pcall(function() return part.AssemblyLinearVelocity end)
     if ok then velocity = vel end
+    
     local ping = 0
     local ok2, p = pcall(function() return LocalPlayer:GetNetworkPing() end)
     if ok2 then ping = p end
+    
     local gravity = Workspace.Gravity
     local air = part.Parent:FindFirstChildOfClass("Humanoid").FloorMaterial == Enum.Material.Air
     local predicted = part.Position + velocity * ping
+    
     if air then
         predicted = predicted + Vector3.new(0, -0.5 * gravity * ping * ping, 0)
     end
     return predicted
 end
 
-local function GetWeaponService()
-    local ok, module = pcall(function()
-        return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
-    end)
-    if ok then return module end
-    return nil
-end
-
-local function InstallHooks()
-    local module = GetWeaponService()
-    if not module then return end
+local function InstallSilentAimHooks()
+    local WeaponService = ReplicatedStorage:FindFirstChild("ClientServices") and ReplicatedStorage.ClientServices:FindFirstChild("WeaponService")
+    if not WeaponService then return end
     
-    if type(module.GetMouseTargetCFrame) == "function" then
-        OriginalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if SilentSettings.Enabled and method == "FireServer" then
-                if self and self.Name == "Shoot" and self.Parent and self.Parent.Name == "Gun" then
-                    local args = {...}
-                    local myChar = LocalPlayer.Character
-                    if myChar and (self.Parent:IsDescendantOf(myChar) or self.Parent:IsDescendantOf(LocalPlayer:FindFirstChildOfClass("Backpack"))) then
-                        local target = GetTargetInFOV()
-                        if target then
-                            local char = target.Character
-                            local part = char:FindFirstChild("HumanoidRootPart")
-                            if part then
-                                local targetPos = PredictPosition(part)
-                                local startCFrame = args[1]
-                                if typeof(startCFrame) == "CFrame" then
-                                    if SilentSettings.ForceShoot then
-                                        local aimCFrame = CFrame.new(startCFrame.Position, targetPos)
-                                        return OriginalNamecall(self, startCFrame, aimCFrame, select(3, ...))
-                                    else
-                                        return OriginalNamecall(self, startCFrame, CFrame.new(startCFrame.Position, targetPos), select(3, ...))
-                                    end
-                                end
-                            end
+    local mt = getrawmetatable(WeaponService)
+    if not mt then return end
+    
+    local old_namecall = mt.__namecall
+    setreadonly(mt, false)
+    
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if SilentSettings.Enabled and method == "FireServer" and self.Name == "Shoot" then
+            local args = {...}
+            local myChar = LocalPlayer.Character
+            if myChar and (self.Parent:IsDescendantOf(myChar) or self.Parent:IsDescendantOf(LocalPlayer:FindFirstChildOfClass("Backpack"))) then
+                local target = GetTargetInFOV()
+                if target then
+                    local char = target.Character
+                    local part = char:FindFirstChild("HumanoidRootPart")
+                    if part then
+                        local targetPos = PredictPosition(part)
+                        local startCFrame = args[1]
+                        if typeof(startCFrame) == "CFrame" then
+                            local aimCFrame = CFrame.new(startCFrame.Position, targetPos)
+                            return old_namecall(self, startCFrame, aimCFrame, select(3, ...))
                         end
                     end
                 end
             end
-            return OriginalNamecall(self, ...)
-        end)
-    end
+        end
+        return old_namecall(self, ...)
+    end)
+    OriginalNamecall = old_namecall
 end
 
 CreateToggle(Tabs["COMBAT"].Content, "Silent Aim", false, function(v)
     SilentSettings.Enabled = v
     if v then
-        task.spawn(function()
-            task.wait(0.5)
-            pcall(InstallHooks)
-        end)
+        task.spawn(InstallSilentAimHooks)
     else
         if OriginalNamecall then
-            hookmetamethod(game, "__namecall", OriginalNamecall)
-            OriginalNamecall = nil
+            local mt = getrawmetatable(ReplicatedStorage.ClientServices.WeaponService)
+            if mt then
+                setreadonly(mt, false)
+                mt.__namecall = OriginalNamecall
+                OriginalNamecall = nil
+            end
         end
     end
 end)
 
 CreateSlider(Tabs["COMBAT"].Content, "FOV", 50, 500, 200, function(v) SilentSettings.FOV = v end)
 CreateToggle(Tabs["COMBAT"].Content, "Prediction", true, function(v) SilentSettings.Prediction = v end)
-CreateToggle(Tabs["COMBAT"].Content, "Force Shoot", false, function(v) SilentSettings.ForceShoot = v end)
-CreateSlider(Tabs["COMBAT"].Content, "Max Distance", 100, 1000, 500, function(v) SilentSettings.MaxDistance = v end)
-
--- Kill Aura
-SectionLabel(Tabs["COMBAT"].Content, " KILL AURA")
-local AuraSettings = { Enabled = false, Range = 30 }
-local AuraThread = nil
-
-CreateToggle(Tabs["COMBAT"].Content, "Kill Aura", false, function(v)
-    AuraSettings.Enabled = v
-    if v then
-        AuraThread = RunService.Heartbeat:Connect(function()
-            if not AuraSettings.Enabled then return end
-            local myChar = LocalPlayer.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if not myRoot then return end
-            
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player == LocalPlayer then continue end
-                local char = player.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                if root and (root.Position - myRoot.Position).Magnitude <= AuraSettings.Range then
-                    local gun = myChar:FindFirstChild("Gun")
-                    if gun then
-                        local shoot = gun:FindFirstChild("Shoot")
-                        if shoot and shoot:IsA("RemoteEvent") then
-                            shoot:FireServer(myRoot.CFrame, CFrame.new(myRoot.Position, root.Position))
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if AuraThread then AuraThread:Disconnect() end
-    end
-end)
-CreateSlider(Tabs["COMBAT"].Content, "Aura Range", 5, 60, 30, function(v) AuraSettings.Range = v end)
 
 -- ═══════════════════════════════════════════════════════════════
--- VISUALS - ESP
+-- VISUALS: ESP
 -- ═══════════════════════════════════════════════════════════════
 SectionLabel(Tabs["VISUALS"].Content, "👁 PLAYER ESP")
 
-local ESPSettings = { Enabled = false, ShowBox = true, ShowName = true, ShowDistance = true, ShowRole = true, ShowSkeleton = true, MaxDistance = 1000 }
+local ESPSettings = { Enabled = false, ShowBox = true, ShowName = true, ShowDistance = true, ShowRole = true, MaxDistance = 1000 }
 local ESP_Data = {}
 local ESPThread = nil
 
@@ -451,7 +422,7 @@ end
 
 local function CreateESP(player)
     if player == LocalPlayer or ESP_Data[player] then return end
-    local data = { highlight = nil, billboard = nil, skeleton = {} }
+    local data = { highlight = nil, billboard = nil }
     
     local highlight = Instance.new("Highlight")
     highlight.Name = "FlonsetESP"
@@ -586,285 +557,12 @@ CreateToggle(Tabs["VISUALS"].Content, "Show Distance", true, function(v) ESPSett
 CreateToggle(Tabs["VISUALS"].Content, "Show Role", true, function(v) ESPSettings.ShowRole = v end)
 CreateSlider(Tabs["VISUALS"].Content, "Max Distance", 100, 2000, 1000, function(v) ESPSettings.MaxDistance = v end)
 
--- Gun ESP
-SectionLabel(Tabs["VISUALS"].Content, "🔫 GUN ESP")
-local GunESPSettings = { Enabled = false, MaxDistance = 500 }
-local GunESP_Data = {}
-local GunESPThread = nil
-
-local function GetGunPart(obj)
-    if obj:IsA("BasePart") then return obj end
-    if obj:IsA("Model") then return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true) end
-    return obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart", true)
-end
-
-local function IsInCharacter(obj)
-    local node = obj.Parent
-    while node and node ~= Workspace do
-        if node:IsA("Model") and Players:GetPlayerFromCharacter(node) then return true end
-        node = node.Parent
-    end
-    return false
-end
-
-local function CreateGunESP(obj)
-    if GunESP_Data[obj] or not obj.Parent or IsInCharacter(obj) then return end
-    local part = GetGunPart(obj)
-    if not part then return end
-    
-    local data = { highlight = nil, billboard = nil }
-    
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "FlonsetGunHL"
-    highlight.Adornee = obj
-    highlight.FillTransparency = 0.7
-    highlight.OutlineTransparency = 0
-    highlight.FillColor = Color3.fromRGB(255, 215, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 215, 0)
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Enabled = true
-    highlight.Parent = CoreGui
-    data.highlight = highlight
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "FlonsetGunBB"
-    billboard.Adornee = part
-    billboard.Size = UDim2.new(0, 100, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = CoreGui
-    
-    local txt = Instance.new("TextLabel", billboard)
-    txt.Size = UDim2.new(1, 0, 1, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = "🔫 GUN"
-    txt.TextColor3 = Color3.fromRGB(255, 215, 0)
-    txt.TextStrokeTransparency = 0
-    txt.TextStrokeColor3 = Color3.new(0, 0, 0)
-    txt.Font = Enum.Font.GothamBold
-    txt.TextSize = 16
-    
-    data.billboard = billboard
-    GunESP_Data[obj] = data
-end
-
-local function RemoveGunESP(obj)
-    local data = GunESP_Data[obj]
-    if not data then return end
-    if data.highlight then pcall(function() data.highlight:Destroy() end) end
-    if data.billboard then pcall(function() data.billboard:Destroy() end) end
-    GunESP_Data[obj] = nil
-end
-
-local function UpdateGunESP()
-    if not GunESPSettings.Enabled then return end
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    
-    for obj, data in pairs(GunESP_Data) do
-        if not obj.Parent or IsInCharacter(obj) then
-            RemoveGunESP(obj)
-            continue
-        end
-        local part = GetGunPart(obj)
-        if not part or not part.Parent then
-            RemoveGunESP(obj)
-            continue
-        end
-        if myRoot then
-            local dist = (part.Position - myRoot.Position).Magnitude
-            if dist > GunESPSettings.MaxDistance then
-                if data.highlight then data.highlight.Enabled = false end
-                if data.billboard then data.billboard.Enabled = false end
-            else
-                if data.highlight then data.highlight.Enabled = true end
-                if data.billboard then data.billboard.Enabled = true end
-            end
-        end
-    end
-end
-
-CreateToggle(Tabs["VISUALS"].Content, "Gun ESP", false, function(v)
-    GunESPSettings.Enabled = v
-    if v then
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj.Name == "GunDrop" and not IsInCharacter(obj) then CreateGunESP(obj) end
-        end
-        GunESPThread = RunService.Heartbeat:Connect(function() pcall(UpdateGunESP) end)
-    else
-        if GunESPThread then GunESPThread:Disconnect() end
-        for obj in pairs(GunESP_Data) do RemoveGunESP(obj) end
-    end
-end)
-
--- World Visuals
-SectionLabel(Tabs["VISUALS"].Content, " WORLD")
-local OriginalLighting = {}
-
-CreateToggle(Tabs["VISUALS"].Content, "Fullbright", false, function(v)
-    if v then
-        OriginalLighting.Brightness = Lighting.Brightness
-        OriginalLighting.Ambient = Lighting.Ambient
-        OriginalLighting.ClockTime = Lighting.ClockTime
-        OriginalLighting.GlobalShadows = Lighting.GlobalShadows
-        Lighting.Brightness = 2
-        Lighting.Ambient = Color3.fromRGB(128, 128, 128)
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    else
-        if OriginalLighting.Brightness then Lighting.Brightness = OriginalLighting.Brightness end
-        if OriginalLighting.Ambient then Lighting.Ambient = OriginalLighting.Ambient end
-        if OriginalLighting.ClockTime then Lighting.ClockTime = OriginalLighting.ClockTime end
-        if OriginalLighting.GlobalShadows ~= nil then Lighting.GlobalShadows = OriginalLighting.GlobalShadows end
-    end
-end)
-
-CreateToggle(Tabs["VISUALS"].Content, "No Fog", false, function(v)
-    if v then
-        Lighting.FogStart = 0
-        Lighting.FogEnd = 100000
-    else
-        Lighting.FogStart = 0
-        Lighting.FogEnd = 1000
-    end
-end)
-
 -- ═══════════════════════════════════════════════════════════════
--- PLAYER
+-- PLAYER: АГРЕССИВНЫЙ ИНВИЗ + FAKE POSITION (UNC/sUNC)
 -- ═══════════════════════════════════════════════════════════════
-SectionLabel(Tabs["PLAYER"].Content, " MOVEMENT")
+SectionLabel(Tabs["PLAYER"].Content, "👻 VISUAL & DESYNC")
 
-CreateSlider(Tabs["PLAYER"].Content, "WalkSpeed", 16, 300, 16, function(v)
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = v end
-    end
-end)
-
-CreateSlider(Tabs["PLAYER"].Content, "JumpPower", 50, 300, 50, function(v)
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.UseJumpPower = true
-            hum.JumpPower = v
-        end
-    end
-end)
-
-local BhopEnabled = false
-local BhopThread = nil
-CreateToggle(Tabs["PLAYER"].Content, "Bhop", false, function(v)
-    BhopEnabled = v
-    if v then
-        BhopThread = RunService.Heartbeat:Connect(function()
-            if not BhopEnabled then return end
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) and hum.FloorMaterial ~= Enum.Material.Air then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end)
-    else
-        if BhopThread then BhopThread:Disconnect() end
-    end
-end)
-
-local NoclipEnabled = false
-local NoclipThread = nil
-CreateToggle(Tabs["PLAYER"].Content, "Noclip", false, function(v)
-    NoclipEnabled = v
-    if v then
-        NoclipThread = RunService.Stepped:Connect(function()
-            if not NoclipEnabled then return end
-            local char = LocalPlayer.Character
-            if not char then return end
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
-            end
-        end)
-    else
-        if NoclipThread then NoclipThread:Disconnect() end
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = true end
-            end
-        end
-    end
-end)
-
-local FlyEnabled = false
-local FlyThread = nil
-local flyBodyVelocity, flyBodyGyro = nil, nil
-local FlySpeed = 50
-
-CreateToggle(Tabs["PLAYER"].Content, "Fly", false, function(v)
-    FlyEnabled = v
-    if v then
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        
-        flyBodyGyro = Instance.new("BodyGyro", hrp)
-        flyBodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
-        flyBodyGyro.P = 9000
-        
-        flyBodyVelocity = Instance.new("BodyVelocity", hrp)
-        flyBodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
-        
-        FlyThread = RunService.Heartbeat:Connect(function()
-            if not FlyEnabled then return end
-            local c = LocalPlayer.Character
-            if not c then return end
-            local h = c:FindFirstChild("HumanoidRootPart")
-            if not h then return end
-            
-            local camera = Workspace.CurrentCamera
-            flyBodyGyro.CFrame = camera.CFrame
-            
-            local moveDir = Vector3.new(0, 0, 0)
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-            
-            if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
-            flyBodyVelocity.Velocity = moveDir * FlySpeed
-        end)
-    else
-        if FlyThread then FlyThread:Disconnect() end
-        if flyBodyVelocity then flyBodyVelocity:Destroy() end
-        if flyBodyGyro then flyBodyGyro:Destroy() end
-    end
-end)
-CreateSlider(Tabs["PLAYER"].Content, "Fly Speed", 10, 200, 50, function(v) FlySpeed = v end)
-
-local InfiniteJumpEnabled = false
-local InfiniteJumpConn = nil
-CreateToggle(Tabs["PLAYER"].Content, "Infinite Jump", false, function(v)
-    InfiniteJumpEnabled = v
-    if v then
-        InfiniteJumpConn = UserInputService.JumpRequest:Connect(function()
-            if not InfiniteJumpEnabled then return end
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end)
-    else
-        if InfiniteJumpConn then InfiniteJumpConn:Disconnect() end
-    end
-end)
-
--- Invis
-SectionLabel(Tabs["PLAYER"].Content, "👻 VISUAL")
+-- Агрессивный инвиз (серверный + клиентский)
 local InvisEnabled = false
 local InvisThread = nil
 local InvisCharConn = nil
@@ -878,7 +576,8 @@ local function ApplyInvis()
             part.LocalTransparencyModifier = 1
         elseif part:IsA("Decal") or part:IsA("Texture") then
             part.Transparency = 1
-        elseif part:IsA("ParticleEmitter") or part:IsA("Fire") or part:IsA("Smoke") then
+            part.LocalTransparencyModifier = 1
+        elseif part:IsA("ParticleEmitter") or part:IsA("Fire") or part:IsA("Smoke") or part:IsA("Sparkles") or part:IsA("Beam") or part:IsA("Trail") then
             part.Enabled = false
         elseif part:IsA("ForceField") then
             part.Visible = false
@@ -895,7 +594,8 @@ local function RestoreInvis()
             part.LocalTransparencyModifier = 0
         elseif part:IsA("Decal") or part:IsA("Texture") then
             part.Transparency = 0
-        elseif part:IsA("ParticleEmitter") or part:IsA("Fire") or part:IsA("Smoke") then
+            part.LocalTransparencyModifier = 0
+        elseif part:IsA("ParticleEmitter") or part:IsA("Fire") or part:IsA("Smoke") or part:IsA("Sparkles") or part:IsA("Beam") or part:IsA("Trail") then
             part.Enabled = true
         elseif part:IsA("ForceField") then
             part.Visible = true
@@ -903,7 +603,7 @@ local function RestoreInvis()
     end
 end
 
-CreateToggle(Tabs["PLAYER"].Content, "Invis", false, function(v)
+CreateToggle(Tabs["PLAYER"].Content, "Invis (Aggressive)", false, function(v)
     InvisEnabled = v
     if v then
         ApplyInvis()
@@ -921,52 +621,69 @@ CreateToggle(Tabs["PLAYER"].Content, "Invis", false, function(v)
     end
 end)
 
-CreateToggle(Tabs["PLAYER"].Content, "Fake Headless", false, function(v)
+-- Fake Position (Desync)
+local FakePosEnabled = false
+local FakePosThread = nil
+local OriginalCFrame = nil
+
+CreateToggle(Tabs["PLAYER"].Content, "Fake Position (Desync)", false, function(v)
+    FakePosEnabled = v
     if v then
-        local thread = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            OriginalCFrame = hrp.CFrame
+            -- Отключаем проверку FallenPartsDestroyHeight чтобы не умирать при десинке
+            pcall(function() sethiddenproperty(Workspace, "FallenPartsDestroyHeight", -9e9) end)
+        end
+        
+        FakePosThread = RunService.Heartbeat:Connect(function()
+            if not FakePosEnabled then return end
             local char = LocalPlayer.Character
-            if not char then return end
-            local head = char:FindFirstChild("Head")
-            if head then
-                head.LocalTransparencyModifier = 1
-                head.Transparency = 1
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Случайное смещение позиции для сервера
+                local fakeCFrame = hrp.CFrame * CFrame.new(math.random(-50, 50), math.random(-50, 50), math.random(-50, 50))
+                pcall(function() hrp.CFrame = fakeCFrame end)
             end
         end)
-        v = thread
     else
-        if type(v) == "RBXScriptConnection" then v:Disconnect() end
+        if FakePosThread then FakePosThread:Disconnect() end
         local char = LocalPlayer.Character
-        if char then
-            local head = char:FindFirstChild("Head")
-            if head then
-                head.LocalTransparencyModifier = 0
-                head.Transparency = 0
-            end
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp and OriginalCFrame then
+            pcall(function() hrp.CFrame = OriginalCFrame end)
+            OriginalCFrame = nil
         end
+        pcall(function() sethiddenproperty(Workspace, "FallenPartsDestroyHeight", -500) end)
     end
 end)
 
-CreateToggle(Tabs["PLAYER"].Content, "Fake Korblox", false, function(v)
+-- Velocity Desync
+local VelocityDesyncEnabled = false
+local VelocityDesyncThread = nil
+
+CreateToggle(Tabs["PLAYER"].Content, "Velocity Desync", false, function(v)
+    VelocityDesyncEnabled = v
     if v then
-        local thread = RunService.Heartbeat:Connect(function()
+        VelocityDesyncThread = RunService.Heartbeat:Connect(function()
+            if not VelocityDesyncEnabled then return end
             local char = LocalPlayer.Character
-            if not char then return end
-            local rightLeg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightLowerLeg")
-            if rightLeg then
-                rightLeg.LocalTransparencyModifier = 1
-                rightLeg.Transparency = 1
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                -- Случайная скорость для обхода предикшена
+                local fakeVel = Vector3.new(math.random(-300, 300), math.random(-300, 300), math.random(-300, 300))
+                pcall(function() hrp.AssemblyLinearVelocity = fakeVel end)
+                task.wait()
+                pcall(function() hrp.AssemblyLinearVelocity = Vector3.zero end)
             end
         end)
-        v = thread
     else
-        if type(v) == "RBXScriptConnection" then v:Disconnect() end
+        if VelocityDesyncThread then VelocityDesyncThread:Disconnect() end
         local char = LocalPlayer.Character
-        if char then
-            local rightLeg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightLowerLeg")
-            if rightLeg then
-                rightLeg.LocalTransparencyModifier = 0
-                rightLeg.Transparency = 0
-            end
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            pcall(function() hrp.AssemblyLinearVelocity = Vector3.zero end)
         end
     end
 end)
@@ -976,11 +693,13 @@ end)
 -- ═══════════════════════════════════════════════════════════════
 SectionLabel(Tabs["MISC"].Content, "🛡 UTILITIES")
 
+-- Anti-AFK
 local AntiAFKEnabled = false
 local AFKConn = nil
 CreateToggle(Tabs["MISC"].Content, "Anti-AFK", false, function(v)
     AntiAFKEnabled = v
     if v then
+        local VirtualUser = game:GetService("VirtualUser")
         AFKConn = LocalPlayer.Idled:Connect(function()
             VirtualUser:CaptureController()
             VirtualUser:ClickButton2(Vector2.new())
@@ -990,9 +709,14 @@ CreateToggle(Tabs["MISC"].Content, "Anti-AFK", false, function(v)
     end
 end)
 
+-- No Fall Damage
+local NoFallEnabled = false
+local NoFallConn = nil
 CreateToggle(Tabs["MISC"].Content, "No Fall Damage", false, function(v)
+    NoFallEnabled = v
     if v then
-        local thread = RunService.Heartbeat:Connect(function()
+        NoFallConn = RunService.Heartbeat:Connect(function()
+            if not NoFallEnabled then return end
             local char = LocalPlayer.Character
             if char then
                 local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1002,264 +726,13 @@ CreateToggle(Tabs["MISC"].Content, "No Fall Damage", false, function(v)
                 end
             end
         end)
-        v = thread
     else
-        if type(v) == "RBXScriptConnection" then v:Disconnect() end
-    end
-end)
-
--- Grab Gun
-SectionLabel(Tabs["MISC"].Content, "🔫 GRAB GUN")
-local GrabSettings = { Enabled = false, GrabRange = 50, GrabSpeed = 80 }
-local GrabThread = nil
-local LastGrabTime = 0
-
-local function FindNearestGun()
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-    local nearest, nearestDist = nil, GrabSettings.GrabRange
-    
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj.Name == "GunDrop" and not IsInCharacter(obj) then
-            local part = GetGunPart(obj)
-            if part and part.Parent then
-                local dist = (part.Position - myRoot.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearest = obj
-                end
-            end
-        end
-    end
-    return nearest, nearestDist
-end
-
-local function MoveToGun(gun)
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local gunPart = GetGunPart(gun)
-    if not gunPart or not gunPart.Parent then return end
-    
-    local targetPos = gunPart.Position + Vector3.new(0, 3, 0)
-    local direction = (targetPos - myRoot.Position).Unit
-    myRoot.AssemblyLinearVelocity = Vector3.new(direction.X * GrabSettings.GrabSpeed, myRoot.AssemblyLinearVelocity.Y, direction.Z * GrabSettings.GrabSpeed)
-    
-    local dist = (gunPart.Position - myRoot.Position).Magnitude
-    if dist < 5 then
-        myRoot.CFrame = CFrame.new(gunPart.Position + Vector3.new(0, 3, 0))
-        task.wait(0.1)
-        myRoot.CFrame = CFrame.new(gunPart.Position + Vector3.new(0, 1, 0))
-    end
-end
-
-CreateToggle(Tabs["MISC"].Content, "Auto Grab Gun", false, function(v)
-    GrabSettings.Enabled = v
-    if v then
-        GrabThread = RunService.Heartbeat:Connect(function()
-            if not GrabSettings.Enabled then return end
-            local now = tick()
-            if now - LastGrabTime < 0.5 then return end
-            local gun, dist = FindNearestGun()
-            if gun and dist <= GrabSettings.GrabRange then
-                LastGrabTime = now
-                MoveToGun(gun)
-            end
-        end)
-    else
-        if GrabThread then GrabThread:Disconnect() end
-    end
-end)
-CreateSlider(Tabs["MISC"].Content, "Grab Range", 10, 100, 50, function(v) GrabSettings.GrabRange = v end)
-
--- Server Buttons
-SectionLabel(Tabs["MISC"].Content, "🌐 SERVER")
-
-local function CreateButton(parent, name, callback)
-    local Frame = Instance.new("Frame", parent)
-    Frame.Size = UDim2.new(1, 0, 0, 35)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
-    Frame.BackgroundTransparency = 0.2
-    Frame.BorderSizePixel = 0
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
-    
-    local Btn = Instance.new("TextButton", Frame)
-    Btn.Size = UDim2.new(1, -20, 1, -6)
-    Btn.Position = UDim2.new(0, 10, 0, 3)
-    Btn.BackgroundColor3 = Color3.fromRGB(70, 100, 220)
-    Btn.Text = name
-    Btn.TextColor3 = Color3.new(1, 1, 1)
-    Btn.TextSize = 13
-    Btn.Font = Enum.Font.GothamBold
-    Btn.BorderSizePixel = 0
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
-    
-    Btn.MouseButton1Click:Connect(function() pcall(callback) end)
-    Btn.MouseEnter:Connect(function() Btn.BackgroundColor3 = Color3.fromRGB(100, 140, 255) end)
-    Btn.MouseLeave:Connect(function() Btn.BackgroundColor3 = Color3.fromRGB(70, 100, 220) end)
-end
-
-CreateButton(Tabs["MISC"].Content, "Rejoin Server", function()
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end)
-CreateButton(Tabs["MISC"].Content, "Leave Game", function()
-    TeleportService:Teleport(173333898, LocalPlayer)
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- TARGET
--- ═══════════════════════════════════════════════════════════════
-SectionLabel(Tabs["TARGET"].Content, "🎯 PLAYERS")
-
-local PlayerListFrame = Instance.new("Frame", Tabs["TARGET"].Content)
-PlayerListFrame.Size = UDim2.new(1, 0, 0, 0)
-PlayerListFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
-PlayerListFrame.BackgroundTransparency = 0.2
-PlayerListFrame.BorderSizePixel = 0
-PlayerListFrame.AutomaticSize = Enum.AutomaticSize.Y
-Instance.new("UICorner", PlayerListFrame).CornerRadius = UDim.new(0, 8)
-Instance.new("UIListLayout", PlayerListFrame).Padding = UDim.new(0, 4)
-Instance.new("UIPadding", PlayerListFrame).PaddingTop = UDim.new(0, 8)
-Instance.new("UIPadding", PlayerListFrame).PaddingBottom = UDim.new(0, 8)
-Instance.new("UIPadding", PlayerListFrame).PaddingLeft = UDim.new(0, 12)
-
-local function CreatePlayerButton(player)
-    if player == LocalPlayer then return end
-    
-    local ButtonFrame = Instance.new("Frame", PlayerListFrame)
-    ButtonFrame.Size = UDim2.new(1, 0, 0, 65)
-    ButtonFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    ButtonFrame.BackgroundTransparency = 0.2
-    ButtonFrame.BorderSizePixel = 0
-    Instance.new("UICorner", ButtonFrame).CornerRadius = UDim.new(0, 6)
-    
-    local NameLabel = Instance.new("TextLabel", ButtonFrame)
-    NameLabel.Size = UDim2.new(1, 0, 0, 20)
-    NameLabel.Position = UDim2.new(0, 0, 0, 5)
-    NameLabel.BackgroundTransparency = 1
-    NameLabel.Text = player.DisplayName
-    NameLabel.TextColor3 = Color3.fromRGB(240, 240, 250)
-    NameLabel.TextSize = 13
-    NameLabel.Font = Enum.Font.GothamBold
-    NameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local RoleLabel = Instance.new("TextLabel", ButtonFrame)
-    RoleLabel.Size = UDim2.new(1, 0, 0, 15)
-    RoleLabel.Position = UDim2.new(0, 0, 0, 25)
-    RoleLabel.BackgroundTransparency = 1
-    local role = GetPlayerRole(player)
-    RoleLabel.Text = role
-    RoleLabel.TextColor3 = GetRoleColor(role)
-    RoleLabel.TextSize = 11
-    RoleLabel.Font = Enum.Font.Gotham
-    RoleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local ActionFrame = Instance.new("Frame", ButtonFrame)
-    ActionFrame.Size = UDim2.new(1, 0, 0, 25)
-    ActionFrame.Position = UDim2.new(0, 0, 0, 40)
-    ActionFrame.BackgroundTransparency = 1
-    Instance.new("UIListLayout", ActionFrame).Padding = UDim.new(0, 4)
-    Instance.new("UIListLayout", ActionFrame).FillDirection = Enum.FillDirection.Horizontal
-    
-    local TPBtn = Instance.new("TextButton", ActionFrame)
-    TPBtn.Size = UDim2.new(0, 50, 1, 0)
-    TPBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 220)
-    TPBtn.Text = "TP"
-    TPBtn.TextColor3 = Color3.new(1, 1, 1)
-    TPBtn.TextSize = 11
-    TPBtn.Font = Enum.Font.GothamBold
-    TPBtn.BorderSizePixel = 0
-    Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 4)
-    TPBtn.MouseButton1Click:Connect(function()
-        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if myRoot and targetRoot then
-            myRoot.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 0)
-        end
-    end)
-    
-    local SpectateBtn = Instance.new("TextButton", ActionFrame)
-    SpectateBtn.Size = UDim2.new(0, 70, 1, 0)
-    SpectateBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 220)
-    SpectateBtn.Text = "Spectate"
-    SpectateBtn.TextColor3 = Color3.new(1, 1, 1)
-    SpectateBtn.TextSize = 11
-    SpectateBtn.Font = Enum.Font.GothamBold
-    SpectateBtn.BorderSizePixel = 0
-    Instance.new("UICorner", SpectateBtn).CornerRadius = UDim.new(0, 4)
-    
-    local spectating = false
-    local spectateThread = nil
-    SpectateBtn.MouseButton1Click:Connect(function()
-        spectating = not spectating
-        if spectating then
-            SpectateBtn.Text = "Stop"
-            spectateThread = RunService.Heartbeat:Connect(function()
-                local camera = Workspace.CurrentCamera
-                local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if targetRoot then
-                    camera.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 10)
-                end
-            end)
-        else
-            SpectateBtn.Text = "Spectate"
-            if spectateThread then spectateThread:Disconnect() end
-            Workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-        end
-    end)
-    
-    local FreezeBtn = Instance.new("TextButton", ActionFrame)
-    FreezeBtn.Size = UDim2.new(0, 55, 1, 0)
-    FreezeBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 220)
-    FreezeBtn.Text = "Freeze"
-    FreezeBtn.TextColor3 = Color3.new(1, 1, 1)
-    FreezeBtn.TextSize = 11
-    FreezeBtn.Font = Enum.Font.GothamBold
-    FreezeBtn.BorderSizePixel = 0
-    Instance.new("UICorner", FreezeBtn).CornerRadius = UDim.new(0, 4)
-    
-    local frozen = false
-    local freezeThread = nil
-    FreezeBtn.MouseButton1Click:Connect(function()
-        frozen = not frozen
-        if frozen then
-            FreezeBtn.Text = "Unfreeze"
-            freezeThread = RunService.Heartbeat:Connect(function()
-                local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if targetRoot then
-                    targetRoot.AssemblyLinearVelocity = Vector3.zero
-                    targetRoot.Anchored = true
-                end
-            end)
-        else
-            FreezeBtn.Text = "Freeze"
-            if freezeThread then freezeThread:Disconnect() end
-            local targetRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if targetRoot then targetRoot.Anchored = false end
-        end
-    end)
-end
-
-for _, player in ipairs(Players:GetPlayers()) do
-    CreatePlayerButton(player)
-end
-
-Players.PlayerAdded:Connect(function(player)
-    task.wait(1)
-    CreatePlayerButton(player)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    for _, child in ipairs(PlayerListFrame:GetChildren()) do
-        if child:IsA("Frame") and child:FindFirstChild("TextLabel") then
-            if child:FindFirstChild("TextLabel").Text == player.DisplayName then
-                child:Destroy()
-            end
-        end
+        if NoFallConn then NoFallConn:Disconnect() end
     end
 end)
 
 -- ═══════════════════════════════════════════════════════════════
--- ОТКРЫТИЕ / ЗАКРЫТИЕ
+-- УПРАВЛЕНИЕ ОКНОМ
 -- ═══════════════════════════════════════════════════════════════
 local isOpen = false
 local isAnimating = false
@@ -1293,13 +766,16 @@ local function ToggleMenu()
     end
 end
 
-CloseBtn.MouseButton1Click:Connect(function() if isOpen then ToggleMenu() end end)
+CloseBtn.MouseButton1Click:Connect(function()
+    if isOpen then ToggleMenu() end
+end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.G then ToggleMenu() end
 end)
 
+-- Перетаскивание
 local dragging = false
 local dragStart, startPos
 
@@ -1325,13 +801,14 @@ Header.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
+-- Автооткрытие
 task.wait(0.5)
-Tabs["COMBAT"].Button.BackgroundColor3 = Color3.fromRGB(70, 100, 220)
+Tabs["COMBAT"].Button.BackgroundColor3 = COLORS.AccentDark
 Tabs["COMBAT"].Button.BackgroundTransparency = 0
 Tabs["COMBAT"].Button.TextColor3 = Color3.new(1, 1, 1)
 Tabs["COMBAT"].Content.Visible = true
 ActiveTab = "COMBAT"
 ToggleMenu()
 
-print("✅ FlonsetHUB v6.0 loaded!")
-print(" Press [G] to toggle menu")
+print("✅ FlonsetHUB v8.0 loaded! (ProjectReal Optimized)")
+print("🔑 Press [G] to toggle menu")
