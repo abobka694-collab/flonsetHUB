@@ -135,19 +135,19 @@ local BGImg = new("ImageLabel", {
     Name = "Background",
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
-    Image = RES.bg,
+    Image = "rbxassetid://101818396313138",
     ImageTransparency = 0.35,
     ScaleType = Enum.ScaleType.Crop,
     ZIndex = 0,
 }, W)
 corner(BGImg, UDim.new(0, 14))
 
--- Тёмный синий оверлей
+-- Тёмный синий оверлей поверх обоев
 local Overlay = new("Frame", {
     Name = "Overlay",
     Size = UDim2.new(1, 0, 1, 0),
-    BackgroundColor3 = Theme.bg,
-    BackgroundTransparency = 0.4,
+    BackgroundColor3 = Color3.fromRGB(15, 20, 35),
+    BackgroundTransparency = 0.55,
     BorderSizePixel = 0,
     ZIndex = 1,
 }, W)
