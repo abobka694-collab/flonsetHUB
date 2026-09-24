@@ -1,6 +1,7 @@
 --[[
-    MM2 GUI  •  только интерфейс
-    Без функционала — только каркас
+    MM2 GUI  •  v3
+    Только интерфейс, без функционала
+    700x600, табы сверху
     RightShift — открыть/закрыть
 ]]
 
@@ -27,35 +28,28 @@ end
 -- THEME
 --============================================================
 local Theme = {
-    -- фон (с прозрачностью)
-    bg = Color3.fromRGB(20, 18, 24),
+    bg = Color3.fromRGB(22, 20, 28),
     bgTransparency = 0.15,
     
-    card = Color3.fromRGB(30, 27, 34),
-    cardTransparency = 0.15,
+    header = Color3.fromRGB(18, 16, 22),
+    headerTransparency = 0.1,
     
-    header = Color3.fromRGB(16, 14, 20),
-    headerTransparency = 0.2,
+    card = Color3.fromRGB(32, 29, 40),
+    cardTransparency = 0.2,
     
-    sidebar = Color3.fromRGB(14, 12, 18),
-    sidebarTransparency = 0.15,
+    cardHover = Color3.fromRGB(38, 34, 48),
     
-    -- акцент
-    accent = Color3.fromRGB(168, 85, 247),
-    accentDim = Color3.fromRGB(120, 60, 180),
+    accent = Color3.fromRGB(160, 90, 255),
+    accentGlow = Color3.fromRGB(190, 130, 255),
     
-    -- текст
     text = Color3.fromRGB(240, 238, 245),
-    textDim = Color3.fromRGB(150, 145, 155),
-    textMuted = Color3.fromRGB(90, 88, 95),
+    textDim = Color3.fromRGB(150, 145, 160),
+    textMuted = Color3.fromRGB(95, 90, 105),
     
-    -- элементы
-    toggleOff = Color3.fromRGB(60, 56, 65),
-    toggleOn = Color3.fromRGB(168, 85, 247),
-    outline = Color3.fromRGB(45, 42, 50),
-    outlineSoft = Color3.fromRGB(35, 32, 40),
+    toggleOff = Color3.fromRGB(60, 56, 70),
+    outline = Color3.fromRGB(50, 45, 62),
+    outlineSoft = Color3.fromRGB(38, 34, 46),
     
-    -- шрифты
     font = Enum.Font.Gotham,
     fontMedium = Enum.Font.GothamMedium,
     fontBold = Enum.Font.GothamBold,
@@ -84,8 +78,8 @@ local function stroke(p, color, thickness, transparency)
     }, p)
 end
 
-local function tween(i, t, p)
-    TweenService:Create(i, TweenInfo.new(t or 0.15), p):Play()
+local function tween(i, t, p, style)
+    TweenService:Create(i, TweenInfo.new(t or 0.15, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), p):Play()
 end
 
 --============================================================
@@ -101,12 +95,12 @@ local Root = new("ScreenGui", {
 }, getParent())
 
 --============================================================
--- WINDOW
+-- WINDOW 700x600
 --============================================================
 local W = new("Frame", {
     Name = "Main",
-    Size = UDim2.new(0, 900, 0, 550),
-    Position = UDim2.new(0.5, -450, 0.5, -275),
+    Size = UDim2.new(0, 700, 0, 600),
+    Position = UDim2.new(0.5, -350, 0.5, -300),
     BackgroundColor3 = Theme.bg,
     BackgroundTransparency = Theme.bgTransparency,
     BorderSizePixel = 0,
@@ -114,24 +108,24 @@ local W = new("Frame", {
     Visible = true,
     ClipsDescendants = true,
 }, Root)
-corner(W, UDim.new(0, 12))
+corner(W, UDim.new(0, 14))
 stroke(W, Theme.outline, 1, 0.3)
 
 --============================================================
--- HEADER
+-- HEADER (с табами внутри)
 --============================================================
 local Header = new("Frame", {
     Name = "Header",
-    Size = UDim2.new(1, 0, 0, 48),
+    Size = UDim2.new(1, 0, 0, 70),
     BackgroundColor3 = Theme.header,
     BackgroundTransparency = Theme.headerTransparency,
     BorderSizePixel = 0,
     Active = true,
 }, W)
-corner(Header, UDim.new(0, 12))
+corner(Header, UDim.new(0, 14))
 new("Frame", {
-    Size = UDim2.new(1, 0, 0, 12),
-    Position = UDim2.new(0, 0, 1, -12),
+    Size = UDim2.new(1, 0, 0, 14),
+    Position = UDim2.new(0, 0, 1, -14),
     BackgroundColor3 = Theme.header,
     BackgroundTransparency = Theme.headerTransparency,
     BorderSizePixel = 0,
@@ -139,35 +133,35 @@ new("Frame", {
 
 -- Logo
 local LogoFrame = new("Frame", {
-    Size = UDim2.new(0, 34, 0, 34),
-    Position = UDim2.new(0, 14, 0.5, -17),
+    Size = UDim2.new(0, 36, 0, 36),
+    Position = UDim2.new(0, 16, 0, 8),
     BackgroundColor3 = Theme.accent,
     BorderSizePixel = 0,
 }, Header)
-corner(LogoFrame, UDim.new(0, 9))
+corner(LogoFrame, UDim.new(0, 10))
 new("TextLabel", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
     Text = "M",
     TextColor3 = Color3.fromRGB(255, 255, 255),
     Font = Theme.fontBold,
-    TextSize = 18,
+    TextSize = 20,
 }, LogoFrame)
 
 -- Title
 new("TextLabel", {
-    Size = UDim2.new(0, 300, 0, 18),
-    Position = UDim2.new(0, 58, 0, 8),
+    Size = UDim2.new(0, 200, 0, 20),
+    Position = UDim2.new(0, 62, 0, 8),
     BackgroundTransparency = 1,
     Text = "MM2",
     TextColor3 = Theme.text,
     Font = Theme.fontBold,
-    TextSize = 15,
+    TextSize = 16,
     TextXAlignment = Enum.TextXAlignment.Left,
 }, Header)
 new("TextLabel", {
-    Size = UDim2.new(0, 300, 0, 14),
-    Position = UDim2.new(0, 58, 0, 26),
+    Size = UDim2.new(0, 200, 0, 14),
+    Position = UDim2.new(0, 62, 0, 28),
     BackgroundTransparency = 1,
     Text = "Murder Mystery 2",
     TextColor3 = Theme.textDim,
@@ -176,10 +170,10 @@ new("TextLabel", {
     TextXAlignment = Enum.TextXAlignment.Left,
 }, Header)
 
--- Close button
+-- Close
 local CloseB = new("TextButton", {
-    Size = UDim2.new(0, 30, 0, 30),
-    Position = UDim2.new(1, -42, 0.5, -15),
+    Size = UDim2.new(0, 32, 0, 32),
+    Position = UDim2.new(1, -48, 0, 10),
     BackgroundColor3 = Theme.card,
     BackgroundTransparency = 0.3,
     Text = "X",
@@ -194,36 +188,29 @@ corner(CloseB, UDim.new(0, 8))
 stroke(CloseB, Theme.outline, 1, 0.5)
 
 --============================================================
--- SIDEBAR (текстовый, без иконок)
+-- TAB BAR (внутри header снизу)
 --============================================================
-local Sidebar = new("Frame", {
-    Name = "Sidebar",
-    Size = UDim2.new(0, 130, 1, -48),
-    Position = UDim2.new(0, 0, 0, 48),
-    BackgroundColor3 = Theme.sidebar,
-    BackgroundTransparency = Theme.sidebarTransparency,
-    BorderSizePixel = 0,
+local TabBar = new("Frame", {
+    Size = UDim2.new(1, -32, 0, 26),
+    Position = UDim2.new(0, 16, 0, 44),
+    BackgroundTransparency = 1,
     Active = true,
-}, W)
+}, Header)
 
 new("UIListLayout", {
-    Padding = UDim.new(0, 4),
+    Padding = UDim.new(0, 6),
+    FillDirection = Enum.FillDirection.Horizontal,
     SortOrder = Enum.SortOrder.LayoutOrder,
-    HorizontalAlignment = Enum.HorizontalAlignment.Center,
-}, Sidebar)
-new("UIPadding", {
-    PaddingTop = UDim.new(0, 14),
-    PaddingLeft = UDim.new(0, 8),
-    PaddingRight = UDim.new(0, 8),
-}, Sidebar)
+    VerticalAlignment = Enum.VerticalAlignment.Center,
+}, TabBar)
 
 --============================================================
 -- CONTENT
 --============================================================
 local Content = new("Frame", {
     Name = "Content",
-    Size = UDim2.new(1, -130, 1, -48),
-    Position = UDim2.new(0, 130, 0, 48),
+    Size = UDim2.new(1, 0, 1, -70),
+    Position = UDim2.new(0, 0, 0, 70),
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     ClipsDescendants = true,
@@ -234,19 +221,19 @@ local Content = new("Frame", {
 -- WATERMARK
 --============================================================
 local Watermark = new("Frame", {
-    Size = UDim2.new(0, 220, 0, 26),
-    Position = UDim2.new(0, 140, 1, -36),
+    Size = UDim2.new(0, 220, 0, 28),
+    Position = UDim2.new(1, -236, 1, -40),
     BackgroundColor3 = Theme.card,
-    BackgroundTransparency = 0.25,
+    BackgroundTransparency = 0.2,
     BorderSizePixel = 0,
     Active = false,
 }, W)
-corner(Watermark, UDim.new(0, 6))
+corner(Watermark, UDim.new(0, 7))
 stroke(Watermark, Theme.outline, 1, 0.4)
 
 local WMText = new("TextLabel", {
-    Size = UDim2.new(1, -16, 1, 0),
-    Position = UDim2.new(0, 10, 0, 0),
+    Size = UDim2.new(1, -20, 1, 0),
+    Position = UDim2.new(0, 12, 0, 0),
     BackgroundTransparency = 1,
     Text = "MM2  •  0 fps  •  0 ms",
     TextColor3 = Theme.accent,
@@ -259,41 +246,41 @@ local WMText = new("TextLabel", {
 -- TAB SYSTEM
 --============================================================
 local Tabs = {}
-local ActiveBtn, ActivePage = nil, nil
+local ActiveTab = nil
 
 local function makeTab(name, displayName)
-    -- Кнопка в sidebar
+    -- Кнопка таба
     local btn = new("TextButton", {
         Name = "Tab_" .. name,
-        Size = UDim2.new(1, 0, 0, 34),
-        BackgroundColor3 = Theme.sidebar,
+        Size = UDim2.new(0, 100, 0, 26),
+        BackgroundColor3 = Theme.card,
         BackgroundTransparency = 1,
-        Text = "  " .. displayName,
+        Text = displayName,
         TextColor3 = Theme.textDim,
         Font = Theme.fontMedium,
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 12,
         BorderSizePixel = 0,
         AutoButtonColor = false,
         Active = true,
-    }, Sidebar)
+    }, TabBar)
     corner(btn, UDim.new(0, 7))
     
-    -- Индикатор слева (фиолетовая полоска при выборе)
-    local indicator = new("Frame", {
-        Size = UDim2.new(0, 3, 0, 18),
-        Position = UDim2.new(0, 0, 0.5, -9),
+    -- Подсветка (полоска снизу)
+    local underline = new("Frame", {
+        Size = UDim2.new(0, 0, 0, 2),
+        Position = UDim2.new(0.5, 0, 1, 0),
+        AnchorPoint = Vector2.new(0.5, 0),
         BackgroundColor3 = Theme.accent,
         BorderSizePixel = 0,
         Visible = false,
     }, btn)
-    corner(indicator, UDim.new(1, 0))
+    corner(underline, UDim.new(1, 0))
     
     -- Страница
     local page = new("ScrollingFrame", {
         Name = "Page_" .. name,
-        Size = UDim2.new(1, -24, 1, -24),
-        Position = UDim2.new(0, 12, 0, 12),
+        Size = UDim2.new(1, -32, 1, -32),
+        Position = UDim2.new(0, 16, 0, 16),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 3,
@@ -305,30 +292,30 @@ local function makeTab(name, displayName)
     }, Content)
     
     new("UIListLayout", {
-        Padding = UDim.new(0, 10),
+        Padding = UDim.new(0, 12),
         SortOrder = Enum.SortOrder.LayoutOrder,
     }, page)
     
-    local ref = { btn = btn, page = page, indicator = indicator }
+    local ref = { btn = btn, page = page, underline = underline }
     Tabs[name] = ref
     
     local function select()
-        if ActiveBtn and ActiveBtn ~= ref then
-            tween(ActiveBtn.btn, 0.15, {
-                BackgroundColor3 = Theme.sidebar,
+        if ActiveTab and ActiveTab ~= ref then
+            tween(ActiveTab.btn, 0.15, {
+                BackgroundColor3 = Theme.card,
                 BackgroundTransparency = 1,
                 TextColor3 = Theme.textDim,
             })
-            ActiveBtn.indicator.Visible = false
+            ActiveTab.underline.Visible = false
         end
         tween(btn, 0.15, {
             BackgroundColor3 = Theme.card,
             BackgroundTransparency = 0.3,
             TextColor3 = Theme.text,
         })
-        indicator.Visible = true
-        ActiveBtn = ref
-        ActivePage = page
+        underline.Visible = true
+        tween(underline, 0.2, { Size = UDim2.new(0, 60, 0, 2) })
+        ActiveTab = ref
         
         for _, other in pairs(Tabs) do
             other.page.Visible = (other == ref)
@@ -338,17 +325,17 @@ local function makeTab(name, displayName)
     btn.MouseButton1Click:Connect(select)
     btn.Activated:Connect(select)
     btn.MouseEnter:Connect(function()
-        if ActiveBtn ~= ref then
-            tween(btn, 0.1, { BackgroundColor3 = Theme.card, BackgroundTransparency = 0.6 })
+        if ActiveTab ~= ref then
+            tween(btn, 0.1, { BackgroundColor3 = Theme.cardHover, BackgroundTransparency = 0.5, TextColor3 = Theme.text })
         end
     end)
     btn.MouseLeave:Connect(function()
-        if ActiveBtn ~= ref then
-            tween(btn, 0.1, { BackgroundColor3 = Theme.sidebar, BackgroundTransparency = 1 })
+        if ActiveTab ~= ref then
+            tween(btn, 0.1, { BackgroundColor3 = Theme.card, BackgroundTransparency = 1, TextColor3 = Theme.textDim })
         end
     end)
     
-    if not ActivePage then select() end
+    if not ActiveTab then select() end
     
     return page
 end
@@ -366,32 +353,26 @@ local function makeSection(parent, title)
         AutomaticSize = Enum.AutomaticSize.Y,
         Active = true,
     }, parent)
-    corner(sec, UDim.new(0, 10))
+    corner(sec, UDim.new(0, 12))
     stroke(sec, Theme.outline, 1, 0.4)
     
-    -- Заголовок секции
-    local secHeader = new("Frame", {
-        Name = "SecHeader",
-        Size = UDim2.new(1, 0, 0, 32),
-        BackgroundTransparency = 1,
-    }, sec)
-    
+    -- Заголовок
     new("TextLabel", {
-        Size = UDim2.new(1, -24, 1, 0),
-        Position = UDim2.new(0, 14, 0, 0),
+        Size = UDim2.new(1, -28, 0, 36),
+        Position = UDim2.new(0, 16, 0, 6),
         BackgroundTransparency = 1,
         Text = string.upper(title),
         TextColor3 = Theme.accent,
         Font = Theme.fontBold,
         TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Left,
-    }, secHeader)
+    }, sec)
     
     -- Внутренний контейнер
     local inner = new("Frame", {
         Name = "Inner",
         Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.new(0, 0, 0, 32),
+        Position = UDim2.new(0, 0, 0, 42),
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y,
         Active = true,
@@ -401,9 +382,9 @@ local function makeSection(parent, title)
         SortOrder = Enum.SortOrder.LayoutOrder,
     }, inner)
     new("UIPadding", {
-        PaddingLeft = UDim.new(0, 12),
-        PaddingRight = UDim.new(0, 12),
-        PaddingBottom = UDim.new(0, 12),
+        PaddingLeft = UDim.new(0, 16),
+        PaddingRight = UDim.new(0, 16),
+        PaddingBottom = UDim.new(0, 16),
     }, inner)
     
     return inner
@@ -415,14 +396,13 @@ end
 local function makeToggle(parent, name, default, callback)
     local state = default == true
     local row = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
+        Size = UDim2.new(1, 0, 0, 34),
         BackgroundTransparency = 1,
         Active = true,
     }, parent)
     
-    -- Название слева
     new("TextLabel", {
-        Size = UDim2.new(1, -60, 1, 0),
+        Size = UDim2.new(1, -70, 1, 0),
         BackgroundTransparency = 1,
         Text = name,
         TextColor3 = Theme.text,
@@ -431,10 +411,9 @@ local function makeToggle(parent, name, default, callback)
         TextXAlignment = Enum.TextXAlignment.Left,
     }, row)
     
-    -- Свитч
     local sw = new("Frame", {
-        Size = UDim2.new(0, 38, 0, 20),
-        Position = UDim2.new(1, -38, 0.5, -10),
+        Size = UDim2.new(0, 40, 0, 22),
+        Position = UDim2.new(1, -40, 0.5, -11),
         BackgroundColor3 = state and Theme.accent or Theme.toggleOff,
         BorderSizePixel = 0,
         Active = true,
@@ -442,14 +421,13 @@ local function makeToggle(parent, name, default, callback)
     corner(sw, UDim.new(1, 0))
     
     local kn = new("Frame", {
-        Size = UDim2.new(0, 16, 0, 16),
-        Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
+        Size = UDim2.new(0, 18, 0, 18),
+        Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BorderSizePixel = 0,
     }, sw)
     corner(kn, UDim.new(1, 0))
     
-    -- Клик-зона
     local btn = new("TextButton", {
         Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
@@ -460,7 +438,7 @@ local function makeToggle(parent, name, default, callback)
     local function doToggle()
         state = not state
         tween(sw, 0.15, { BackgroundColor3 = state and Theme.accent or Theme.toggleOff })
-        kn.Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        tween(kn, 0.15, { Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9) })
         if callback then pcall(callback, state) end
     end
     
@@ -472,7 +450,7 @@ local function makeToggle(parent, name, default, callback)
         set = function(v)
             state = v and true or false
             tween(sw, 0.15, { BackgroundColor3 = state and Theme.accent or Theme.toggleOff })
-            kn.Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+            tween(kn, 0.15, { Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9) })
         end,
     }
 end
@@ -485,14 +463,13 @@ local function makeSlider(parent, name, min, max, default, callback, suffix)
     local value = default or min
     
     local row = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 48),
+        Size = UDim2.new(1, 0, 0, 52),
         BackgroundTransparency = 1,
         Active = true,
     }, parent)
     
-    -- Название
     new("TextLabel", {
-        Size = UDim2.new(0.6, 0, 0, 16),
+        Size = UDim2.new(0.6, 0, 0, 18),
         BackgroundTransparency = 1,
         Text = name,
         TextColor3 = Theme.text,
@@ -501,9 +478,8 @@ local function makeSlider(parent, name, min, max, default, callback, suffix)
         TextXAlignment = Enum.TextXAlignment.Left,
     }, row)
     
-    -- Значение
     local valLbl = new("TextLabel", {
-        Size = UDim2.new(0.4, 0, 0, 16),
+        Size = UDim2.new(0.4, 0, 0, 18),
         Position = UDim2.new(0.6, 0, 0, 0),
         BackgroundTransparency = 1,
         Text = tostring(value) .. suffix,
@@ -513,10 +489,9 @@ local function makeSlider(parent, name, min, max, default, callback, suffix)
         TextXAlignment = Enum.TextXAlignment.Right,
     }, row)
     
-    -- Бар
     local barBg = new("Frame", {
-        Size = UDim2.new(1, 0, 0, 6),
-        Position = UDim2.new(0, 0, 0, 28),
+        Size = UDim2.new(1, 0, 0, 8),
+        Position = UDim2.new(0, 0, 0, 32),
         BackgroundColor3 = Theme.toggleOff,
         BorderSizePixel = 0,
         Active = true,
@@ -532,9 +507,8 @@ local function makeSlider(parent, name, min, max, default, callback, suffix)
     }, barBg)
     corner(barFill, UDim.new(1, 0))
     
-    -- Кружок
     local knob = new("Frame", {
-        Size = UDim2.new(0, 14, 0, 14),
+        Size = UDim2.new(0, 16, 0, 16),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(pct, 0, 0.5, 0),
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
@@ -588,10 +562,9 @@ local function makeSlider(parent, name, min, max, default, callback, suffix)
 end
 
 --============================================================
--- СОЗДАЁМ ТАБЫ И СЕКЦИИ (ПУСТЫЕ)
+-- ТАБЫ И СЕКЦИИ (ПУСТЫЕ)
 --============================================================
 
--- COMBAT
 local combatPage = makeTab("combat", "Combat")
 local cSec1 = makeSection(combatPage, "Kill Aura")
 makeToggle(cSec1, "Kill Aura", false, function(v) end)
@@ -600,7 +573,6 @@ makeSlider(cSec1, "Range", 5, 50, 15, function(v) end, " st")
 local cSec2 = makeSection(combatPage, "Auto Shoot")
 makeToggle(cSec2, "Auto Shoot", false, function(v) end)
 
--- VISUALS
 local visualPage = makeTab("visuals", "Visuals")
 local vSec1 = makeSection(visualPage, "ESP")
 makeToggle(vSec1, "ESP", false, function(v) end)
@@ -614,7 +586,6 @@ makeToggle(vSec2, "Chams", false, function(v) end)
 local vSec3 = makeSection(visualPage, "World")
 makeToggle(vSec3, "Fullbright", false, function(v) end)
 
--- MOVE
 local movePage = makeTab("move", "Move")
 local mSec1 = makeSection(movePage, "Fly")
 makeToggle(mSec1, "Fly", false, function(v) end)
@@ -626,7 +597,6 @@ makeToggle(mSec2, "Infinite Jump", false, function(v) end)
 makeToggle(mSec2, "Speed", false, function(v) end)
 makeSlider(mSec2, "Speed Value", 16, 200, 16, function(v) end, "")
 
--- MISC
 local miscPage = makeTab("misc", "Misc")
 local miSec = makeSection(miscPage, "Utilities")
 makeToggle(miSec, "Anti-AFK", false, function(v) end)
@@ -640,6 +610,8 @@ local dragStart, startPos
 Header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
+        -- не тащим если клик по кнопкам
+        if input.Target and (input.Target:IsA("TextButton")) then return end
         dragging = true
         dragStart = input.Position
         startPos = W.Position
@@ -683,7 +655,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
 end)
 
 --============================================================
--- WATERMARK UPDATE (FPS/PING)
+-- FPS/PING
 --============================================================
 local fps = 0
 local lastTime = tick()
@@ -710,4 +682,4 @@ task.spawn(function()
     end
 end)
 
-print("[MM2 GUI] Загружено. RightShift — меню.")
+print("[MM2 GUI v3] Загружено. RightShift — меню.")
