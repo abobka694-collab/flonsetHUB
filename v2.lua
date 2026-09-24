@@ -1281,3 +1281,18 @@ if miscPage then
 end
 
 print("[MM2] Функционал загружен.")
+
+-- ФИКС КЛИКОВ
+task.spawn(function()
+    task.wait(1)
+    for _, d in ipairs(Root:GetDescendants()) do
+        if d:IsA("TextButton") or d:IsA("ImageButton") then
+            d.Active = true
+            d.AutoButtonColor = false
+        end
+        if d:IsA("Frame") or d:IsA("ScrollingFrame") or d:IsA("CanvasGroup") then
+            d.Active = true
+        end
+    end
+    print("[FIX] Все элементы активированы")
+end)
