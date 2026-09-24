@@ -1,575 +1,186 @@
 --[[
-    MM2 Cheat  •  ProjectReal Edition
-    Полная версия: ESP, Chams, Silent Aim, Kill Aura, Fake Position
-    Для ProjectReal / Real / Wave / Volt (sUNC 100%)
-    
-    Инструкция:
-        1. Запусти ProjectReal
-        2. Инжект в Roblox
-        3. Вставь этот скрипт
-        4. RightShift — открыть/закрыть меню
+    MM2 Simple Cheat
+    Без хуков, без silent aim, без новых API
+    Работает везде где есть базовый экзекутор
 ]]
 
---============================================================
--- SERVICES
---============================================================
-local Players           = game:GetService("Players")
-local RunService        = game:GetService("RunService")
-local UserInputService  = game:GetService("UserInputService")
-local TweenService      = game:GetService("TweenService")
-local VirtualUser       = game:GetService("VirtualUser")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Lighting          = game:GetService("Lighting")
-local CoreGui           = game:GetService("CoreGui")
-local Stats             = game:GetService("Stats")
-
 local LP = Players.LocalPlayer
 
---============================================================
--- GET PARENT (для ПК все API есть, но fallback оставим)
---============================================================
-local function get_parent()
+-- родитель для GUI с fallback
+local function getParent()
     if gethui then
-        local ok, hui = pcall(gethui)
-        if ok and hui then return hui end
+        local ok, h = pcall(gethui)
+        if ok and h then return h end
     end
-    local ok, cg = pcall(function() return CoreGui end)
+    local ok, cg = pcall(function() return game:GetService("CoreGui") end)
     if ok and cg then return cg end
     return LP:FindFirstChildOfClass("PlayerGui")
 end
 
---============================================================
--- STATE
---============================================================
 local State = {
-    -- ESP
     esp = false,
-    espName = true,
-    espRole = true,
-    espDist = true,
-    espBox = true,
-    
-    -- Chams
     chams = false,
-    chamsMode = "Highlight",  -- Highlight / Material
-    
-    -- Combat
-    silentAim = false,
-    silentFov = 200,
-    silentPrediction = true,
-    killAura = false,
-    killAuraRange = 15,
-    autoShoot = false,
-    
-    -- Movement
+    killaura = false,
     fly = false,
-    flySpeed = 60,
     noclip = false,
-    infJump = false,
-    speed = 16,
-    speedEnabled = false,
-    
-    -- Misc
-    antiAfk = false,
+    infjump = false,
     fullbright = false,
-    fakePos = false,
-    fakePosRange = 9e7,
 }
 
+--============ ESP ============
 local espData = {}
-local chamsCache = {}
-local fakePosData = {
-    active = false,
-    realCF = nil,
-    fakePos = nil,
-    originalFPDH = nil,
-    conns = {},
-}
 
-local originalLighting = {}
-
---============================================================
--- ROLE DETECTION
---============================================================
-local roleModule = nil
-
-local function getRoleModule()
-    if roleModule and roleModule.PlayerData then return roleModule end
-    local ok, m = pcall(function()
-        return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CurrentRoundClient", 5))
-    end)
-    if ok and type(m) == "table" then roleModule = m end
-    return roleModule
-end
-
-local function getRole(player)
-    local m = getRoleModule()
-    local data = m and m.PlayerData
-    if type(data) == "table" then
-        local info = data[player.Name]
-        if type(info) == "table" and not info.Dead then
-            return info.Role or "Innocent"
-        end
+local function getRole(p)
+    local char = p.Character
+    local bp = p:FindFirstChildOfClass("Backpack")
+    if (char and char:FindFirstChild("Gun")) or (bp and bp:FindFirstChild("Gun")) then
+        return "Sheriff"
     end
-    local char = player.Character
-    local bp = player:FindFirstChildOfClass("Backpack")
-    local function hasTool(name)
-        if char and char:FindFirstChild(name) then return true end
-        if bp and bp:FindFirstChild(name) then return true end
-        return false
+    if (char and char:FindFirstChild("Knife")) or (bp and bp:FindFirstChild("Knife")) then
+        return "Murderer"
     end
-    if hasTool("Gun") then return "Sheriff" end
-    if hasTool("Knife") then return "Murderer" end
     return "Innocent"
 end
 
-local function getRoleColor(role)
-    if role == "Murderer" then return Color3.fromRGB(255, 60, 60) end
-    if role == "Sheriff" or role == "Hero" then return Color3.fromRGB(60, 180, 255) end
-    return Color3.fromRGB(240, 240, 240)
+local function roleColor(r)
+    if r == "Murderer" then return Color3.fromRGB(255,60,60) end
+    if r == "Sheriff" then return Color3.fromRGB(60,180,255) end
+    return Color3.fromRGB(240,240,240)
 end
 
---============================================================
--- ESP
---============================================================
-local function createESP(player)
-    if player == LP or espData[player] then return end
-    local char = player.Character
+local function makeESP(p)
+    if p == LP or espData[p] then return end
+    local char = p.Character
     if not char then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "MM2ESP"
-    highlight.Adornee = char
-    highlight.FillTransparency = 0.6
-    highlight.OutlineTransparency = 0
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = get_parent()
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "MM2ESPBB"
-    billboard.Adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.ResetOnSpawn = false
-    billboard.Parent = get_parent()
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "Name"
-    nameLabel.Size = UDim2.new(1, 0, 0, 16)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = player.Name
-    nameLabel.TextColor3 = Color3.new(1, 1, 1)
-    nameLabel.TextStrokeTransparency = 0
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 13
-    nameLabel.Parent = billboard
-
-    local roleLabel = Instance.new("TextLabel")
-    roleLabel.Name = "Role"
-    roleLabel.Size = UDim2.new(1, 0, 0, 14)
-    roleLabel.Position = UDim2.new(0, 0, 0, 16)
-    roleLabel.BackgroundTransparency = 1
-    roleLabel.Text = ""
-    roleLabel.TextStrokeTransparency = 0
-    roleLabel.Font = Enum.Font.GothamBold
-    roleLabel.TextSize = 11
-    roleLabel.Parent = billboard
-
-    local distLabel = Instance.new("TextLabel")
-    distLabel.Name = "Distance"
-    distLabel.Size = UDim2.new(1, 0, 0, 12)
-    distLabel.Position = UDim2.new(0, 0, 0, 30)
-    distLabel.BackgroundTransparency = 1
-    distLabel.Text = ""
-    distLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    distLabel.TextStrokeTransparency = 0
-    distLabel.Font = Enum.Font.Gotham
-    distLabel.TextSize = 10
-    distLabel.Parent = billboard
-
-    espData[player] = {
-        highlight = highlight,
-        billboard = billboard,
-        nameLabel = nameLabel,
-        roleLabel = roleLabel,
-        distLabel = distLabel,
-    }
-end
-
-local function removeESP(player)
-    local data = espData[player]
-    if not data then return end
-    if data.highlight then pcall(function() data.highlight:Destroy() end) end
-    if data.billboard then pcall(function() data.billboard:Destroy() end) end
-    espData[player] = nil
+    
+    local hl = Instance.new("Highlight")
+    hl.Adornee = char
+    hl.FillTransparency = 0.6
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Parent = getParent()
+    
+    local bb = Instance.new("BillboardGui")
+    bb.Adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+    bb.Size = UDim2.new(0, 200, 0, 40)
+    bb.StudsOffset = Vector3.new(0, 2.5, 0)
+    bb.AlwaysOnTop = true
+    bb.Parent = getParent()
+    
+    local nl = Instance.new("TextLabel")
+    nl.Size = UDim2.new(1,0,0,16)
+    nl.BackgroundTransparency = 1
+    nl.Text = p.Name
+    nl.TextColor3 = Color3.new(1,1,1)
+    nl.TextStrokeTransparency = 0
+    nl.Font = Enum.Font.GothamBold
+    nl.TextSize = 13
+    nl.Parent = bb
+    
+    local rl = Instance.new("TextLabel")
+    rl.Size = UDim2.new(1,0,0,14)
+    rl.Position = UDim2.new(0,0,0,16)
+    rl.BackgroundTransparency = 1
+    rl.TextStrokeTransparency = 0
+    rl.Font = Enum.Font.GothamBold
+    rl.TextSize = 11
+    rl.Parent = bb
+    
+    espData[p] = {hl = hl, bb = bb, nl = nl, rl = rl}
 end
 
 local function updateESP()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        local char = player.Character
+    if not State.esp then return end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LP then continue end
+        local char = p.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if char and hum and hum.Health > 0 then
-            if not espData[player] then createESP(player) end
-            local data = espData[player]
-            if data then
-                local role = getRole(player)
-                local color = getRoleColor(role)
-                if data.highlight then
-                    data.highlight.Adornee = char
-                    data.highlight.FillColor = color
-                    data.highlight.OutlineColor = color
-                    data.highlight.FillTransparency = State.espBox and 0.6 or 1
-                end
-                if data.billboard then
-                    data.billboard.Adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-                end
-                if data.nameLabel then
-                    data.nameLabel.Text = State.espName and player.Name or ""
-                    data.nameLabel.Visible = State.espName
-                end
-                if data.roleLabel then
-                    data.roleLabel.Text = State.espRole and ("[" .. role .. "]") or ""
-                    data.roleLabel.TextColor3 = color
-                    data.roleLabel.Visible = State.espRole
-                end
-                if data.distLabel then
-                    local myChar = LP.Character
-                    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-                    local targetRoot = char:FindFirstChild("HumanoidRootPart")
-                    if myRoot and targetRoot and State.espDist then
-                        local dist = (myRoot.Position - targetRoot.Position).Magnitude
-                        data.distLabel.Text = string.format("%.0fm", dist)
-                        data.distLabel.Visible = true
-                    else
-                        data.distLabel.Visible = false
-                    end
-                end
+            if not espData[p] then makeESP(p) end
+            local d = espData[p]
+            if d then
+                local role = getRole(p)
+                local col = roleColor(role)
+                d.hl.Adornee = char
+                d.hl.FillColor = col
+                d.hl.OutlineColor = col
+                d.bb.Adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+                d.rl.Text = "[" .. role .. "]"
+                d.rl.TextColor3 = col
             end
         else
-            removeESP(player)
-        end
-    end
-end
-
-local function toggleESP(v)
-    State.esp = v
-    if not v then
-        for player in pairs(espData) do removeESP(player) end
-    end
-end
-
---============================================================
--- CHAMS
---============================================================
-local function applyChamsHighlight(player)
-    -- уже делается через ESP highlight
-    if not espData[player] then createESP(player) end
-end
-
-local function applyChamsMaterial(player)
-    if player == LP then return end
-    local char = player.Character
-    if not char then return end
-    local role = getRole(player)
-    local color = getRoleColor(role)
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-            if not chamsCache[part] then
-                chamsCache[part] = { mat = part.Material, col = part.Color }
-            end
-            part.Material = Enum.Material.ForceField
-            part.Color = color
-        end
-    end
-end
-
-local function restoreChamsMaterial(player)
-    local char = player.Character
-    if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            local cache = chamsCache[part]
-            if cache then
-                pcall(function()
-                    part.Material = cache.mat
-                    part.Color = cache.col
-                end)
-                chamsCache[part] = nil
+            local d = espData[p]
+            if d then
+                pcall(function() d.hl:Destroy() end)
+                pcall(function() d.bb:Destroy() end)
+                espData[p] = nil
             end
         end
     end
 end
 
-local function updateChams()
-    if not State.chams then return end
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
-            if State.chamsMode == "Highlight" then
-                applyChamsHighlight(player)
-            else
-                applyChamsMaterial(player)
-            end
-        end
-    end
-end
-
-local function toggleChams(v)
-    State.chams = v
-    if not v then
-        for _, player in ipairs(Players:GetPlayers()) do
-            restoreChamsMaterial(player)
-        end
-        chamsCache = {}
-    end
-end
-
---============================================================
--- SILENT AIM (работает на ProjectReal!)
---============================================================
-local silentFov = State.silentFov
-
-local function getClosestTarget()
-    local mouse = UserInputService:GetMouseLocation()
-    local cam = workspace.CurrentCamera
-    if not cam then return nil end
-    local closest, closestDist = nil, silentFov
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if not char or not hum or hum.Health <= 0 then continue end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then continue end
-
-        local pos = hrp.Position
-        if State.silentPrediction then
-            local vel = hrp.AssemblyLinearVelocity
-            local ping = LP:GetNetworkPing() or 0
-            pos = pos + vel * ping
-        end
-
-        local screenPos, onScreen = cam:WorldToViewportPoint(pos)
-        if not onScreen then continue end
-
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouse).Magnitude
-        if dist < closestDist then
-            closestDist = dist
-            closest = hrp
-        end
-    end
-    return closest
-end
-
--- Хук WeaponService
-local weaponService = nil
-local hookedMouse = false
-local hookedTarget = false
-local originalGetMouse = nil
-local originalGetTarget = nil
-
-local function installSilentHooks()
-    if hookedMouse and hookedTarget then return end
-    
-    local ok, svc = pcall(function()
-        return require(ReplicatedStorage:WaitForChild("ClientServices"):WaitForChild("WeaponService"))
-    end)
-    if not ok or not svc then return end
-    weaponService = svc
-
-    if not hookedMouse and type(svc.GetMouseTargetCFrame) == "function" then
-        originalGetMouse = svc.GetMouseTargetCFrame
-        local hook = newcclosure(function(self, ...)
-            if State.silentAim and not checkcaller() then
-                local target = getClosestTarget()
-                if target then
-                    return CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
-                end
-            end
-            return originalGetMouse(self, ...)
-        end)
-        pcall(function() setreadonly(svc, false) end)
-        pcall(function() svc.GetMouseTargetCFrame = hook end)
-        hookedMouse = true
-    end
-
-    if not hookedTarget and type(svc.GetTargetPosition) == "function" then
-        originalGetTarget = svc.GetTargetPosition
-        local hook = newcclosure(function(self, x, y, ...)
-            if State.silentAim and not checkcaller() then
-                local target = getClosestTarget()
-                if target then
-                    return target.Position
-                end
-            end
-            return originalGetTarget(self, x, y, ...)
-        end)
-        pcall(function() setreadonly(svc, false) end)
-        pcall(function() svc.GetTargetPosition = hook end)
-        hookedTarget = true
-    end
-end
-
-local function uninstallSilentHooks()
-    if weaponService then
-        pcall(function() setreadonly(weaponService, false) end)
-        if originalGetMouse then
-            pcall(function() weaponService.GetMouseTargetCFrame = originalGetMouse end)
-        end
-        if originalGetTarget then
-            pcall(function() weaponService.GetTargetPosition = originalGetTarget end)
-        end
-    end
-    hookedMouse = false
-    hookedTarget = false
-end
-
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if State.silentAim then
-            pcall(installSilentHooks)
-        end
-    end
-end)
-
---============================================================
--- KILL AURA (Knife)
---============================================================
+--============ KILL AURA ============
 local function getKnife()
     local char = LP.Character
-    if char then
-        local k = char:FindFirstChild("Knife")
-        if k then return k end
-    end
+    if char and char:FindFirstChild("Knife") then return char.Knife end
     local bp = LP:FindFirstChildOfClass("Backpack")
-    if bp then
-        local k = bp:FindFirstChild("Knife")
-        if k then return k end
-    end
+    if bp and bp:FindFirstChild("Knife") then return bp.Knife end
     return nil
-end
-
-local function equipKnife()
-    local knife = getKnife()
-    if not knife then return nil end
-    if knife.Parent ~= LP.Character then
-        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then pcall(function() hum:EquipTool(knife) end) end
-        return nil
-    end
-    return knife
 end
 
 local function doKillAura()
-    if not State.killAura then return end
-    local knife = equipKnife()
+    if not State.killaura then return end
+    local knife = getKnife()
     if not knife then return end
-    local events = knife:FindFirstChild("Events")
-    if not events then return end
-    local stabbed = events:FindFirstChild("KnifeStabbed")
-    local touched = events:FindFirstChild("HandleTouched")
-    if not stabbed or not touched then return end
-
-    local myChar = LP.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if knife.Parent ~= LP.Character then
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then pcall(function() hum:EquipTool(knife) end) end
+        return
+    end
+    local ev = knife:FindFirstChild("Events")
+    if not ev then return end
+    local stab = ev:FindFirstChild("KnifeStabbed")
+    local touch = ev:FindFirstChild("HandleTouched")
+    if not stab or not touch then return end
+    
+    local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return end
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        local char = player.Character
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == LP then continue end
+        local char = p.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if char and hum and hum.Health > 0 then
             local root = char:FindFirstChild("HumanoidRootPart")
-            if root and (root.Position - myRoot.Position).Magnitude <= State.killAuraRange then
-                pcall(function()
-                    stabbed:FireServer()
-                    touched:FireServer(root)
-                end)
+            if root and (root.Position - myRoot.Position).Magnitude <= 15 then
+                pcall(function() stab:FireServer() end)
+                pcall(function() touch:FireServer(root) end)
             end
         end
     end
 end
 
---============================================================
--- AUTO SHOOT (стреляет в murderer если ты шериф)
---============================================================
-local function getGun()
-    local char = LP.Character
-    if char then
-        local g = char:FindFirstChild("Gun")
-        if g then return g end
-    end
-    local bp = LP:FindFirstChildOfClass("Backpack")
-    if bp then
-        local g = bp:FindFirstChild("Gun")
-        if g then return g end
-    end
-    return nil
-end
-
-local function doAutoShoot()
-    if not State.autoShoot then return end
-    local gun = getGun()
-    if not gun then return end
-    local shoot = gun:FindFirstChild("Shoot")
-    if not shoot or not shoot:IsA("RemoteEvent") then return end
-
-    local myChar = LP.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LP then continue end
-        local role = getRole(player)
-        if role == "Murderer" then
-            local char = player.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if char and hum and hum.Health > 0 then
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if root and (root.Position - myRoot.Position).Magnitude <= 200 then
-                    local origin = myRoot.CFrame
-                    local aim = CFrame.new(origin.Position, root.Position)
-                    pcall(function()
-                        shoot:FireServer(origin, aim)
-                    end)
-                    return
-                end
-            end
-        end
-    end
-end
-
---============================================================
--- FLY
---============================================================
-local flyVelocity, flyGyro
-
+--============ FLY ============
+local flyBV, flyBG
 local function startFly()
     local char = LP.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
-    if flyVelocity then flyVelocity:Destroy() end
-    if flyGyro then flyGyro:Destroy() end
-
-    flyGyro = Instance.new("BodyGyro")
-    flyGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
-    flyGyro.P = 9000
-    flyGyro.Parent = hrp
-
-    flyVelocity = Instance.new("BodyVelocity")
-    flyVelocity.MaxForce = Vector3.new(4e5, 4e5, 4e5)
-    flyVelocity.Velocity = Vector3.zero
-    flyVelocity.Parent = hrp
-end
-
-local function stopFly()
-    if flyVelocity then flyVelocity:Destroy() flyVelocity = nil end
-    if flyGyro then flyGyro:Destroy() flyGyro = nil end
+    if flyBV then flyBV:Destroy() end
+    if flyBG then flyBG:Destroy() end
+    flyBG = Instance.new("BodyGyro")
+    flyBG.MaxTorque = Vector3.new(4e5,4e5,4e5)
+    flyBG.P = 9000
+    flyBG.Parent = hrp
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.MaxForce = Vector3.new(4e5,4e5,4e5)
+    flyBV.Velocity = Vector3.zero
+    flyBV.Parent = hrp
 end
 
 local function updateFly()
@@ -577,22 +188,280 @@ local function updateFly()
     local char = LP.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-    if not flyVelocity or not flyGyro then startFly() return end
-
+    if not flyBV then startFly() return end
     local cam = workspace.CurrentCamera
-    flyGyro.CFrame = cam.CFrame
-
-    local move = Vector3.zero
-    if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
-    if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
-    if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
-    if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
-    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.yAxis end
-    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then move = move - Vector3.yAxis end
-
-    if move.Magnitude > 0 then move = move.Unit * State.flySpeed end
-    flyVelocity.Velocity = move
+    if not cam then return end
+    flyBG.CFrame = cam.CFrame
+    local m = Vector3.zero
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then m = m + cam.CFrame.LookVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then m = m - cam.CFrame.LookVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then m = m - cam.CFrame.RightVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then m = m + cam.CFrame.RightVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then m = m + Vector3.yAxis end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then m = m - Vector3.yAxis end
+    if m.Magnitude > 0 then m = m.Unit * 60 end
+    flyBV.Velocity = m
 end
 
-local function toggleFly(v)
-    St
+local function stopFly()
+    if flyBV then flyBV:Destroy() flyBV = nil end
+    if flyBG then flyBG:Destroy() flyBG = nil end
+end
+
+--============ NOCLIP ============
+local function updateNoclip()
+    if not State.noclip then return end
+    local char = LP.Character
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = false end
+    end
+end
+
+--============ INF JUMP ============
+UserInputService.JumpRequest:Connect(function()
+    if State.infjump then
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+--============ FULLBRIGHT ============
+local origL = {}
+local function saveL()
+    local L = game:GetService("Lighting")
+    origL.b = L.Brightness
+    origL.a = L.Ambient
+    origL.o = L.OutdoorAmbient
+    origL.g = L.GlobalShadows
+    origL.c = L.ClockTime
+    origL.f = L.FogEnd
+end
+local function applyFB()
+    local L = game:GetService("Lighting")
+    L.Brightness = 2
+    L.Ambient = Color3.fromRGB(150,150,150)
+    L.OutdoorAmbient = Color3.fromRGB(150,150,150)
+    L.GlobalShadows = false
+    L.ClockTime = 14
+    L.FogEnd = 100000
+end
+local function restoreL()
+    local L = game:GetService("Lighting")
+    if origL.b then
+        L.Brightness = origL.b
+        L.Ambient = origL.a
+        L.OutdoorAmbient = origL.o
+        L.GlobalShadows = origL.g
+        L.ClockTime = origL.c
+        L.FogEnd = origL.f
+    end
+end
+saveL()
+
+--============ MAIN LOOP ============
+RunService.Heartbeat:Connect(function()
+    pcall(updateESP)
+    pcall(doKillAura)
+    pcall(updateFly)
+    pcall(updateNoclip)
+end)
+
+LP.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if State.fly then startFly() end
+end)
+
+--============ GUI ============
+local Theme = {
+    bg = Color3.fromRGB(18,16,14),
+    card = Color3.fromRGB(26,24,22),
+    accent = Color3.fromRGB(168,85,247),
+    text = Color3.fromRGB(240,240,245),
+    dim = Color3.fromRGB(140,135,130),
+    off = Color3.fromRGB(55,52,50),
+}
+
+local Root = Instance.new("ScreenGui")
+Root.Name = "MM2_" .. math.random(100000,999999)
+Root.ResetOnSpawn = false
+Root.IgnoreGuiInset = false
+Root.DisplayOrder = 10
+Root.Parent = getParent()
+
+local W = Instance.new("Frame")
+W.Size = UDim2.new(0, 380, 0, 400)
+W.Position = UDim2.new(0.5, -190, 0.5, -200)
+W.BackgroundColor3 = Theme.bg
+W.BorderSizePixel = 0
+W.Active = true
+W.Parent = Root
+
+local function corner(p, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = r or UDim.new(0, 8)
+    c.Parent = p
+    return c
+end
+
+corner(W, UDim.new(0, 10))
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(40,38,35)
+stroke.Thickness = 1
+stroke.Parent = W
+
+local H = Instance.new("Frame")
+H.Size = UDim2.new(1,0,0,40)
+H.BackgroundColor3 = Theme.card
+H.BorderSizePixel = 0
+H.Active = true
+H.Parent = W
+corner(H, UDim.new(0,10))
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,-60,1,0)
+title.Position = UDim2.new(0,14,0,0)
+title.BackgroundTransparency = 1
+title.Text = "MM2 Simple"
+title.TextColor3 = Theme.text
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = H
+
+local closeB = Instance.new("TextButton")
+closeB.Size = UDim2.new(0,26,0,26)
+closeB.Position = UDim2.new(1,-34,0.5,-13)
+closeB.BackgroundColor3 = Theme.card
+closeB.Text = "X"
+closeB.TextColor3 = Theme.dim
+closeB.Font = Enum.Font.GothamBold
+closeB.TextSize = 14
+closeB.BorderSizePixel = 0
+closeB.AutoButtonColor = false
+closeB.Active = true
+closeB.Parent = H
+corner(closeB, UDim.new(0,6))
+
+local C = Instance.new("ScrollingFrame")
+C.Size = UDim2.new(1,-16,1,-52)
+C.Position = UDim2.new(0,8,0,44)
+C.BackgroundTransparency = 1
+C.BorderSizePixel = 0
+C.ScrollBarThickness = 3
+C.ScrollBarImageColor3 = Theme.accent
+C.CanvasSize = UDim2.new(0,0,0,0)
+C.AutomaticCanvasSize = Enum.AutomaticSize.Y
+C.Active = true
+C.Parent = W
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0,6)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = C
+
+local function toggle(name, getter, setter)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1,0,0,32)
+    row.BackgroundColor3 = Theme.card
+    row.BorderSizePixel = 0
+    row.Active = true
+    row.Parent = C
+    corner(row, UDim.new(0,6))
+    
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1,-60,1,0)
+    lbl.Position = UDim2.new(0,12,0,0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = name
+    lbl.TextColor3 = Theme.text
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = row
+    
+    local state = getter()
+    local sw = Instance.new("Frame")
+    sw.Size = UDim2.new(0,36,0,18)
+    sw.Position = UDim2.new(1,-46,0.5,-9)
+    sw.BackgroundColor3 = state and Theme.accent or Theme.off
+    sw.BorderSizePixel = 0
+    sw.Parent = row
+    corner(sw, UDim.new(1,0))
+    
+    local kn = Instance.new("Frame")
+    kn.Size = UDim2.new(0,14,0,14)
+    kn.Position = state and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7)
+    kn.BackgroundColor3 = Color3.new(1,1,1)
+    kn.BorderSizePixel = 0
+    kn.Parent = sw
+    corner(kn, UDim.new(1,0))
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.Active = true
+    btn.Parent = row
+    
+    local function toggleFn()
+        state = not state
+        sw.BackgroundColor3 = state and Theme.accent or Theme.off
+        kn.Position = state and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7)
+        setter(state)
+    end
+    
+    btn.MouseButton1Click:Connect(toggleFn)
+    btn.Activated:Connect(toggleFn)
+end
+
+toggle("ESP", function() return State.esp end, function(v) State.esp = v end)
+toggle("Kill Aura", function() return State.killaura end, function(v) State.killaura = v end)
+toggle("Fly", function() return State.fly end, function(v)
+    State.fly = v
+    if v then startFly() else stopFly() end
+end)
+toggle("Noclip", function() return State.noclip end, function(v) State.noclip = v end)
+toggle("Infinite Jump", function() return State.infjump end, function(v) State.infjump = v end)
+toggle("Fullbright", function() return State.fullbright end, function(v)
+    State.fullbright = v
+    if v then applyFB() else restoreL() end
+end)
+
+-- drag
+local dragging, dragStart, startPos = false, nil, nil
+H.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = i.Position
+        startPos = W.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(i)
+    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+        local d = i.Position - dragStart
+        W.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+local visible = true
+closeB.MouseButton1Click:Connect(function()
+    W.Visible = false
+    visible = false
+end)
+
+UserInputService.InputBegan:Connect(function(i, gp)
+    if gp then return end
+    if i.KeyCode == Enum.KeyCode.RightShift then
+        visible = not visible
+        W.Visible = visible
+    end
+end)
+
+print("[MM2 Simple] Загружено! RightShift — меню")
