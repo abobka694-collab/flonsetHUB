@@ -469,3 +469,88 @@ UserInputService.InputBegan:Connect(function(Input, GameProcessed)
 end)
 
 print("[MM2Hub] Loaded")
+
+--==================================================
+-- CLOSE BUTTON
+--==================================================
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.fromOffset(32, 32)
+CloseButton.Position = UDim2.new(1, -42, 0, 10)
+CloseButton.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "×"
+CloseButton.TextColor3 = Color3.fromRGB(220, 220, 225)
+CloseButton.TextSize = 20
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.AutoButtonColor = false
+CloseButton.Parent = Top
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseButton
+
+CloseButton.MouseEnter:Connect(function()
+    CloseButton.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+end)
+
+CloseButton.MouseLeave:Connect(function()
+    CloseButton.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    Main.Visible = false
+end)
+
+--==================================================
+-- DRAGGING
+--==================================================
+
+local Dragging = false
+local DragStart
+local StartPosition
+
+Top.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = true
+        DragStart = input.Position
+        StartPosition = Main.Position
+    end
+end)
+
+Top.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if not Dragging then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - DragStart
+
+        Main.Position = UDim2.new(
+            StartPosition.X.Scale,
+            StartPosition.X.Offset + delta.X,
+            StartPosition.Y.Scale,
+            StartPosition.Y.Offset + delta.Y
+        )
+    end
+end)
+
+--==================================================
+-- RIGHT SHIFT = SHOW / HIDE
+--==================================================
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        Main.Visible = not Main.Visible
+    end
+end)
