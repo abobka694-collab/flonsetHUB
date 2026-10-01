@@ -157,7 +157,7 @@ local function clearAll()
 end
 
 -- Кнопки
-makeButton("💾  Сохранить (R)", 80, Color3.fromRGB(40, 140, 70), saveCheckpoint)
+makeButton("💾  Сохранить (F)", 80, Color3.fromRGB(40, 140, 70), saveCheckpoint)
 makeButton("🚀  Телепорт (E)", 122, Color3.fromRGB(40, 90, 170), loadCheckpoint)
 makeButton("⬅️  Предыдущий (Ctrl)", 164, Color3.fromRGB(130, 90, 40), loadPrevious)
 makeButton("🗑️  Удалить последний (V)", 206, Color3.fromRGB(170, 50, 50), deleteLast)
